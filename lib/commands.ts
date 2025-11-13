@@ -1,7 +1,12 @@
 import { dbHelpers } from './db';
 import { CommandResult } from './types';
 
-export type CommandHandler = (args: string[]) => Promise<CommandResult>;
+export interface CommandContext {
+  currentProjectId?: string;
+  tasks?: any[];
+}
+
+export type CommandHandler = (args: string[], context?: CommandContext) => Promise<CommandResult>;
 
 export const commands: Record<string, CommandHandler> = {
   // Project commands
@@ -89,7 +94,7 @@ export const commands: Record<string, CommandHandler> = {
   },
 
   // Task commands
-  'add': async (args: string[], context?: { currentProjectId?: string }): Promise<CommandResult> => {
+  'add': async (args: string[], context?: CommandContext): Promise<CommandResult> => {
     if (!context?.currentProjectId) {
       return {
         success: false,
@@ -113,7 +118,7 @@ export const commands: Record<string, CommandHandler> = {
     };
   },
 
-  'tasks': async (args: string[], context?: { currentProjectId?: string }): Promise<CommandResult> => {
+  'tasks': async (args: string[], context?: CommandContext): Promise<CommandResult> => {
     if (!context?.currentProjectId) {
       return {
         success: false,
@@ -140,7 +145,7 @@ export const commands: Record<string, CommandHandler> = {
     };
   },
 
-  'complete': async (args: string[], context?: { currentProjectId?: string; tasks?: any[] }): Promise<CommandResult> => {
+  'complete': async (args: string[], context?: CommandContext): Promise<CommandResult> => {
     if (!context?.currentProjectId) {
       return {
         success: false,
@@ -238,7 +243,7 @@ Jelly Beans Earned: ${totalTasks}
     };
   },
 
-  'share': async (args: string[], context?: { currentProjectId?: string }): Promise<CommandResult> => {
+  'share': async (args: string[], context?: CommandContext): Promise<CommandResult> => {
     if (!context?.currentProjectId) {
       return {
         success: false,
@@ -322,7 +327,7 @@ Pro tip: All tasks are 15 minutes. Stay focused!
 
 export async function executeCommand(
   input: string,
-  context?: { currentProjectId?: string; tasks?: any[] }
+  context?: CommandContext
 ): Promise<CommandResult> {
   const trimmed = input.trim();
   if (!trimmed) {
