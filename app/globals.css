@@ -1,0 +1,63 @@
+@import "tailwindcss";
+
+@theme inline {
+  --color-background: #0a0a0a;
+  --color-foreground: #10b981;
+  --font-sans: var(--font-ibm-plex-mono);
+  --font-mono: var(--font-ibm-plex-mono);
+}
+
+:root {
+  --background: #0a0a0a;
+  --foreground: #10b981;
+  --terminal-green: #10b981;
+  --terminal-dark: #0a0a0a;
+  --terminal-gray: #1f2937;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-ibm-plex-mono), 'Courier New', monospace;
+  overflow: hidden;
+}
+
+/* Custom scrollbar for terminal look */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--terminal-dark);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--terminal-gray);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #374151;
+}
+
+/* Terminal text selection */
+::selection {
+  background: var(--terminal-green);
+  color: var(--terminal-dark);
+}
+
+/* Disable default input styles */
+input:focus {
+  outline: none;
+}
+
+/* Cursor blink animation */
+@keyframes blink {
+  0%, 50% { opacity: 1; }
+  51%, 100% { opacity: 0; }
+}
+
+.cursor-blink {
+  animation: blink 1s step-end infinite;
+}
