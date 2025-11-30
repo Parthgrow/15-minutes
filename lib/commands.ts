@@ -10,11 +10,11 @@ export type CommandHandler = (args: string[], context?: CommandContext) => Promi
 
 export const commands: Record<string, CommandHandler> = {
   // Project commands
-  'new': async (args: string[]): Promise<CommandResult> => {
+  'new': async (args: string[], context?: CommandContext): Promise<CommandResult> => {
     if (args.length === 0) {
       return {
         success: false,
-        message: 'Usage: new project [name]'
+        message: 'Usage: new project [name] or new feature [name]'
       };
     }
 
@@ -43,9 +43,44 @@ export const commands: Record<string, CommandHandler> = {
       };
     }
 
+    if (args[0] === 'feature') {
+      if (!context?.currentProjectId) {
+        return {
+          success: false,
+          message: 'No active project. Create or switch to a project first.'
+        };
+      }
+
+      const featureName = args.slice(1).join(' ');
+      if (!featureName) {
+        return {
+          success: false,
+          message: 'Feature name is required'
+        };
+      }
+
+      const existing = await dbHelpers.getFeatureByName(context.currentProjectId, featureName);
+      if (existing) {
+        return {
+          success: false,
+          message: `Feature "${featureName}" already exists in this project`
+        };
+      }
+
+      const feature = await dbHelpers.createFeature(context.currentProjectId, featureName);
+      const features = await dbHelpers.getFeatures(context.currentProjectId);
+      const featureNumber = features.length; // 1-based index
+
+      return {
+        success: true,
+        message: `Created feature #${featureNumber}: ${featureName}`,
+        data: { feature }
+      };
+    }
+
     return {
       success: false,
-      message: 'Usage: new project [name]'
+      message: 'Usage: new project [name] or new feature [name]'
     };
   },
 
@@ -93,6 +128,34 @@ export const commands: Record<string, CommandHandler> = {
     };
   },
 
+  // Feature commands
+  'features': async (args: string[], context?: CommandContext): Promise<CommandResult> => {
+    if (!context?.currentProjectId) {
+      return {
+        success: false,
+        message: 'No active project. Create or switch to a project first.'
+      };
+    }
+
+    const features = await dbHelpers.getFeatures(context.currentProjectId);
+    if (features.length === 0) {
+      return {
+        success: true,
+        message: 'No features yet. Create one with: new feature [name]'
+      };
+    }
+
+    const featureList = features
+      .map((f, i) => `[${i + 1}] ${f.name}`)
+      .join('\n');
+
+    return {
+      success: true,
+      message: `Your features:\n${featureList}`,
+      data: { features }
+    };
+  },
+
   // Task commands
   'add': async (args: string[], context?: CommandContext): Promise<CommandResult> => {
     if (!context?.currentProjectId) {
@@ -102,18 +165,55 @@ export const commands: Record<string, CommandHandler> = {
       };
     }
 
-    const description = args.join(' ');
-    if (!description) {
+    // Parse: add task [description] [feature_id]
+    if (args[0] !== 'task') {
       return {
         success: false,
-        message: 'Usage: add [task description]'
+        message: 'Usage: add task [description] [feature_id]'
       };
     }
 
-    const task = await dbHelpers.createTask(context.currentProjectId, description);
+    if (args.length < 3) {
+      return {
+        success: false,
+        message: 'Usage: add task [description] [feature_id]\nExample: add task "implement login" 1'
+      };
+    }
+
+    const featureIdNum = parseInt(args[args.length - 1]);
+    if (isNaN(featureIdNum) || featureIdNum < 1) {
+      return {
+        success: false,
+        message: 'Feature ID must be a positive number'
+      };
+    }
+
+    const description = args.slice(1, -1).join(' ');
+    if (!description) {
+      return {
+        success: false,
+        message: 'Task description is required'
+      };
+    }
+
+    // Get feature by index (1-based)
+    const feature = await dbHelpers.getFeatureByIndex(context.currentProjectId, featureIdNum);
+    if (!feature) {
+      return {
+        success: false,
+        message: `Feature #${featureIdNum} not found. Use 'features' to see available features.`
+      };
+    }
+
+    const task = await dbHelpers.createTask(context.currentProjectId, feature.id, description);
+    
+    // Calculate task number for display
+    const tasksInFeature = await dbHelpers.getTasksByFeature(feature.id);
+    const taskNumber = tasksInFeature.length;
+
     return {
       success: true,
-      message: `Added task: ${description}`,
+      message: `Added task: ${description} (${featureIdNum}.${taskNumber})`,
       data: { task }
     };
   },
@@ -126,22 +226,44 @@ export const commands: Record<string, CommandHandler> = {
       };
     }
 
-    const tasks = await dbHelpers.getTasks(context.currentProjectId);
-    if (tasks.length === 0) {
+    const features = await dbHelpers.getFeatures(context.currentProjectId);
+    if (features.length === 0) {
       return {
         success: true,
-        message: 'No pending tasks. Add one with: add [description]'
+        message: 'No features yet. Create one with: new feature [name]'
       };
     }
 
-    const taskList = tasks
-      .map((t, i) => `[${i + 1}] ${t.description}`)
-      .join('\n');
+    let hasAnyTasks = false;
+    const featureSections: string[] = [];
+
+    for (let i = 0; i < features.length; i++) {
+      const feature = features[i];
+      const featureNumber = i + 1;
+      const tasks = await dbHelpers.getTasksByFeature(feature.id);
+
+      if (tasks.length > 0) {
+        hasAnyTasks = true;
+        const taskList = tasks
+          .map((t, taskIdx) => `  [${featureNumber}.${taskIdx + 1}] ${t.description}`)
+          .join('\n');
+        featureSections.push(`[${featureNumber}] ${feature.name}\n${taskList}`);
+      } else {
+        featureSections.push(`[${featureNumber}] ${feature.name} (no tasks)`);
+      }
+    }
+
+    if (!hasAnyTasks) {
+      return {
+        success: true,
+        message: 'No pending tasks. Add one with: add task [description] [feature_id]'
+      };
+    }
 
     return {
       success: true,
-      message: `Pending tasks:\n${taskList}`,
-      data: { tasks }
+      message: `Pending tasks:\n${featureSections.join('\n\n')}`,
+      data: { features, tasks: await dbHelpers.getTasksByProject(context.currentProjectId) }
     };
   },
 
@@ -153,19 +275,48 @@ export const commands: Record<string, CommandHandler> = {
       };
     }
 
-    const taskNum = parseInt(args[0]);
-    if (isNaN(taskNum) || taskNum < 1) {
+    // Parse task number in format: feature.task (e.g., "1.2" or "1.1")
+    const taskIdentifier = args[0];
+    if (!taskIdentifier) {
       return {
         success: false,
-        message: 'Usage: complete [task number]'
+        message: 'Usage: complete [feature.task] (e.g., complete 1.2)'
       };
     }
 
-    const tasks = await dbHelpers.getTasks(context.currentProjectId);
+    const parts = taskIdentifier.split('.');
+    if (parts.length !== 2) {
+      return {
+        success: false,
+        message: 'Usage: complete [feature.task] (e.g., complete 1.2)'
+      };
+    }
+
+    const featureNum = parseInt(parts[0]);
+    const taskNum = parseInt(parts[1]);
+
+    if (isNaN(featureNum) || isNaN(taskNum) || featureNum < 1 || taskNum < 1) {
+      return {
+        success: false,
+        message: 'Invalid task number. Use format: feature.task (e.g., 1.2)'
+      };
+    }
+
+    // Get feature by index
+    const feature = await dbHelpers.getFeatureByIndex(context.currentProjectId, featureNum);
+    if (!feature) {
+      return {
+        success: false,
+        message: `Feature #${featureNum} not found`
+      };
+    }
+
+    // Get tasks for this feature
+    const tasks = await dbHelpers.getTasksByFeature(feature.id);
     if (taskNum > tasks.length) {
       return {
         success: false,
-        message: `Task #${taskNum} not found`
+        message: `Task ${featureNum}.${taskNum} not found`
       };
     }
 
@@ -292,10 +443,16 @@ PROJECT MANAGEMENT:
   switch [project]          Switch to a project
   projects                  List all projects
 
+FEATURE MANAGEMENT:
+  new feature [name]        Create a feature in current project
+  features                  List all features in current project
+
 TASK MANAGEMENT:
-  add [description]         Add a 15min task
-  tasks                     List pending tasks
-  complete [#]              Complete a task
+  add task [desc] [id]      Add a 15min task to a feature
+                            Example: add task "implement login" 1
+  tasks                     List pending tasks (grouped by feature)
+  complete [feature.task]   Complete a task
+                            Example: complete 1.2
 
 COLLABORATION:
   streak with @[name]       Start a streak

@@ -1,8 +1,9 @@
 import Dexie, { Table } from 'dexie';
-import { Project, Task, Streak, SharedTask } from './types';
+import { Project, Feature, Task, Streak, SharedTask } from './types';
 
 export class FifteenMinutesDB extends Dexie {
   projects!: Table<Project>;
+  features!: Table<Feature>;
   tasks!: Table<Task>;
   streaks!: Table<Streak>;
   sharedTasks!: Table<SharedTask>;
@@ -15,6 +16,58 @@ export class FifteenMinutesDB extends Dexie {
       tasks: 'id, projectId, completedAt, createdAt',
       streaks: 'id, partnerId, currentStreak',
       sharedTasks: 'id, taskId, sharedWith, sharedAt'
+    });
+
+    // Version 2: Add features table and update tasks to include featureId
+    this.version(2).stores({
+      projects: 'id, name, createdAt, tasksCompleted',
+      features: 'id, projectId, name, createdAt, tasksCompleted',
+      tasks: 'id, projectId, featureId, completedAt, createdAt',
+      streaks: 'id, partnerId, currentStreak',
+      sharedTasks: 'id, taskId, sharedWith, sharedAt'
+    }).upgrade(async (tx) => {
+      // Migration: Create "General" feature for each project and assign orphaned tasks
+      const projects = await tx.table('projects').toArray();
+      const tasks = await tx.table('tasks').toArray();
+      
+      for (const project of projects) {
+        // Get all features for this project
+        const projectFeatures = await tx.table('features')
+          .where('projectId')
+          .equals(project.id)
+          .toArray();
+        
+        // Check if "General" feature already exists
+        const existingGeneral = projectFeatures.find(f => f.name === 'General');
+        
+        let generalFeatureId: string;
+        
+        if (!existingGeneral) {
+          // Create "General" feature
+          const generalFeature: Feature = {
+            id: crypto.randomUUID(),
+            projectId: project.id,
+            name: 'General',
+            createdAt: Date.now(),
+            tasksCompleted: 0
+          };
+          await tx.table('features').add(generalFeature);
+          generalFeatureId = generalFeature.id;
+        } else {
+          generalFeatureId = existingGeneral.id;
+        }
+        
+        // Assign all tasks without featureId to General feature
+        const orphanedTasks = tasks.filter(
+          (t: Task & { featureId?: string }) => t.projectId === project.id && !t.featureId
+        );
+        
+        for (const task of orphanedTasks) {
+          await tx.table('tasks').update(task.id, {
+            featureId: generalFeatureId
+          });
+        }
+      }
     });
   }
 }
@@ -56,11 +109,66 @@ export const dbHelpers = {
     }
   },
 
+  // Features
+  async createFeature(projectId: string, name: string): Promise<Feature> {
+    const feature: Feature = {
+      id: crypto.randomUUID(),
+      projectId,
+      name,
+      createdAt: Date.now(),
+      tasksCompleted: 0
+    };
+    await db.features.add(feature);
+    return feature;
+  },
+
+  async getFeatures(projectId: string): Promise<Feature[]> {
+    return await db.features
+      .where('projectId')
+      .equals(projectId)
+      .sortBy('createdAt');
+  },
+
+  async getFeature(id: string): Promise<Feature | undefined> {
+    return await db.features.get(id);
+  },
+
+  async getFeatureByName(projectId: string, name: string): Promise<Feature | undefined> {
+    const features = await db.features
+      .where('projectId')
+      .equals(projectId)
+      .toArray();
+    return features.find(f => f.name.toLowerCase() === name.toLowerCase());
+  },
+
+  async getFeatureByIndex(projectId: string, index: number): Promise<Feature | undefined> {
+    const features = await this.getFeatures(projectId);
+    return features[index - 1]; // 1-based index
+  },
+
+  async incrementFeatureTasks(featureId: string): Promise<void> {
+    const feature = await db.features.get(featureId);
+    if (feature) {
+      await db.features.update(featureId, {
+        tasksCompleted: feature.tasksCompleted + 1
+      });
+    }
+  },
+
+  async getOrCreateGeneralFeature(projectId: string): Promise<Feature> {
+    let generalFeature = await this.getFeatureByName(projectId, 'General');
+    if (!generalFeature) {
+      generalFeature = await this.createFeature(projectId, 'General');
+    }
+    return generalFeature;
+  },
+
   // Tasks
-  async createTask(projectId: string, description: string): Promise<Task> {
+  async createTask(projectId: string, featureId: string, description: string): Promise<Task> {
     const task: Task = {
       id: crypto.randomUUID(),
       projectId,
+      featureId,
       description,
       completedAt: null,
       createdAt: Date.now(),
@@ -71,6 +179,22 @@ export const dbHelpers = {
   },
 
   async getTasks(projectId: string): Promise<Task[]> {
+    return await db.tasks
+      .where('projectId')
+      .equals(projectId)
+      .and(task => task.completedAt === null)
+      .sortBy('createdAt');
+  },
+
+  async getTasksByFeature(featureId: string): Promise<Task[]> {
+    return await db.tasks
+      .where('featureId')
+      .equals(featureId)
+      .and(task => task.completedAt === null)
+      .sortBy('createdAt');
+  },
+
+  async getTasksByProject(projectId: string): Promise<Task[]> {
     return await db.tasks
       .where('projectId')
       .equals(projectId)
@@ -91,6 +215,7 @@ export const dbHelpers = {
     if (task && task.completedAt === null) {
       await db.tasks.update(taskId, { completedAt: Date.now() });
       await this.incrementProjectTasks(task.projectId);
+      await this.incrementFeatureTasks(task.featureId);
       return await db.tasks.get(taskId);
     }
     return undefined;
