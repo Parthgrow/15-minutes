@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { IBM_Plex_Mono, VT323 } from "next/font/google";
 import "./globals.css";
+import Providers from "@/components/Providers";
 
 const ibmPlexMono = IBM_Plex_Mono({
   weight: ['400', '500', '700'],
@@ -29,7 +30,7 @@ export default function RootLayout({
       <body
         className={`${ibmPlexMono.variable} ${vt323.variable} antialiased`}
       >
-        {children}
+        <Providers>{children}</Providers>
       </body>
     </html>
   );
