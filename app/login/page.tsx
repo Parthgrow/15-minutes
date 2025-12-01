@@ -1,56 +1,18 @@
-'use client';
+"use client";
 
-import { signIn, useSession } from 'next-auth/react';
+import { signIn, useSession } from "next-auth/react";
 
 export default function LoginPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
 
   const handleGoogleSignIn = () => {
-    signIn('google', { callbackUrl: '/login' });
+    signIn("google", { callbackUrl: "/" });
   };
 
-  if (status === 'loading') {
+  if (status === "loading") {
     return (
       <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
         <div className="text-green-400 font-mono">Loading...</div>
-      </div>
-    );
-  }
-
-  if (session) {
-    return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-        <div className="max-w-md w-full border border-gray-800 rounded-lg p-8 bg-[#111111]">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-green-400 font-mono mb-2">
-              Signed In Successfully
-            </h1>
-            <div className="w-16 h-1 bg-green-400 mx-auto"></div>
-          </div>
-
-          <div className="space-y-4 mb-6">
-            <div className="space-y-2 text-gray-300 font-mono text-sm">
-              <div className="flex items-center gap-2">
-                <span className="text-green-500">Name:</span>
-                <span className="text-gray-200">{session.user?.name || 'N/A'}</span>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <span className="text-green-500">Email:</span>
-                <span className="text-gray-200">{session.user?.email || 'N/A'}</span>
-              </div>
-            </div>
-          </div>
-
-          <div className="border-t border-gray-800 pt-4">
-            <button
-              onClick={() => signIn('google', { callbackUrl: '/login' })}
-              className="w-full bg-green-500 hover:bg-green-600 text-black font-mono font-bold py-2 px-4 rounded transition-colors"
-            >
-              Sign In Again
-            </button>
-          </div>
-        </div>
       </div>
     );
   }
@@ -62,9 +24,7 @@ export default function LoginPage() {
           <h1 className="text-3xl font-bold text-green-400 font-mono mb-2">
             15 MINUTES
           </h1>
-          <p className="text-gray-500 font-mono text-sm">
-            Sign in to continue
-          </p>
+          <p className="text-gray-500 font-mono text-sm">Sign in to continue</p>
         </div>
 
         <button

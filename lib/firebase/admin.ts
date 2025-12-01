@@ -9,7 +9,7 @@ let db: Firestore | undefined;
  * Uses service account credentials from individual environment variables
  * Compatible with Vercel and other serverless platforms
  */
-export function initializeFirebaseAdmin(): App {
+function initializeFirebaseAdmin(): App {
   // Return existing app if already initialized
   if (getApps().length > 0) {
     app = getApps()[0];
@@ -53,24 +53,35 @@ export function initializeFirebaseAdmin(): App {
   app = initializeApp({
     credential: cert(serviceAccount),
     projectId: FIREBASE_PROJECT_ID,
-
   });
 
   return app;
 }
 
 /**
- * Get Firestore instance
- * Initializes Firebase Admin if not already initialized
+ * Initialize Firestore instance (singleton pattern)
+ * This function is called once when the module is first imported
  */
-export function getFirestoreAdmin(): Firestore {
+function initializeFirestore(): Firestore {
   if (!db) {
     if (!app) {
       initializeFirebaseAdmin();
     }
-    db = getFirestore(app);
+    db = getFirestore(app!);
   }
   return db;
+}
+
+// Initialize Firestore instance as singleton
+// This runs once when the module is first imported
+const dbInstance = initializeFirestore();
+
+/**
+ * Get Firestore instance (singleton)
+ * Returns the same instance every time
+ */
+export function getFirestoreAdmin(): Firestore {
+  return dbInstance;
 }
 
 /**
@@ -82,3 +93,9 @@ export function getFirebaseAdminApp(): App {
   }
   return app!;
 }
+
+/**
+ * Export the Firestore database instance (singleton)
+ * Use this directly instead of calling getFirestoreAdmin()
+ */
+export { dbInstance as db };

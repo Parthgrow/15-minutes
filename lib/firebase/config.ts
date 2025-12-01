@@ -5,4 +5,4 @@
  * All Firebase operations should go through these instances.
  */
 
-export { initializeFirebaseAdmin, getFirestoreAdmin, getFirebaseAdminApp } from './admin';
+export { db, getFirestoreAdmin, getFirebaseAdminApp } from './admin';

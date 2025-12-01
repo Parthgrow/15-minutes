@@ -1,17 +1,27 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import ChatInterface from '@/components/ChatInterface';
-import JellyBeanJar from '@/components/JellyBeanJar';
-import TaskList from '@/components/TaskList';
-import CompletionAnimation from '@/components/CompletionAnimation';
+import { useState } from "react";
+import { signOut, useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import ChatInterface from "@/components/ChatInterface";
+import JellyBeanJar from "@/components/JellyBeanJar";
+import TaskList from "@/components/TaskList";
+import CompletionAnimation from "@/components/CompletionAnimation";
 
 export default function Home() {
-  const [currentProjectId, setCurrentProjectId] = useState<string | undefined>();
+  const [currentProjectId, setCurrentProjectId] = useState<
+    string | undefined
+  >();
   const [showCelebration, setShowCelebration] = useState(false);
+  const { data: session } = useSession();
+  const router = useRouter();
 
   const handleTaskComplete = () => {
     setShowCelebration(true);
+  };
+
+  const handleLogout = async () => {
+    await signOut({ callbackUrl: "/login", redirect: true });
   };
 
   return (
@@ -22,14 +32,25 @@ export default function Home() {
           <div className="text-green-400 font-bold text-lg font-mono">
             15 MINUTES
           </div>
-          <div className="text-gray-600 text-sm font-mono">
-            v1.0.0
-          </div>
+          <div className="text-gray-600 text-sm font-mono">v1.0.0</div>
         </div>
-        <div className="flex gap-2">
-          <div className="w-3 h-3 rounded-full bg-red-500"></div>
-          <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
-          <div className="w-3 h-3 rounded-full bg-green-500"></div>
+        <div className="flex items-center gap-4">
+          {session?.user?.email && (
+            <div className="text-gray-500 text-xs font-mono hidden sm:block">
+              {session.user.email}
+            </div>
+          )}
+          <button
+            onClick={handleLogout}
+            className="text-gray-400 hover:text-green-400 font-mono text-sm px-3 py-1 border border-gray-700 hover:border-green-500 rounded transition-colors"
+          >
+            Logout
+          </button>
+          <div className="flex gap-2">
+            <div className="w-3 h-3 rounded-full bg-red-500"></div>
+            <div className="w-3 h-3 rounded-full bg-yellow-500"></div>
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+          </div>
         </div>
       </div>
 
