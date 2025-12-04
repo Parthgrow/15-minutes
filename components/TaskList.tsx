@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { Feature, Task } from "@/lib/types";
-import { dbHelpers } from "@/lib/db";
 
 interface TaskListProps {
   projectId?: string;
@@ -28,12 +27,17 @@ export default function TaskList({ projectId }: TaskListProps) {
     }
 
     const loadData = async () => {
-      const features = await dbHelpers.getFeatures(projectId);
+      // Fetch features for this project
+      const featuresRes = await fetch(`/api/features?projectId=${projectId}`);
+      const features: Feature[] = await featuresRes.json();
+
       let total = 0;
 
       const featuresData: FeatureWithTasks[] = await Promise.all(
         features.map(async (feature, index) => {
-          const tasks = await dbHelpers.getTasksByFeature(feature.id);
+          // Fetch tasks for each feature
+          const tasksRes = await fetch(`/api/tasks?featureId=${feature.id}`);
+          const tasks: Task[] = await tasksRes.json();
           total += tasks.length;
           return {
             feature,

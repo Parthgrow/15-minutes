@@ -1,5 +1,4 @@
-import { dbHelpers } from '../db';
-import { CommandResult } from '../types';
+import { CommandResult, Project } from '../types';
 import { CommandContext } from './types';
 import { newProject } from './projects';
 import { newFeature } from './features';
@@ -47,9 +46,16 @@ export async function addCommand(
 
 // stats - Show statistics
 export async function stats(): Promise<CommandResult> {
-  const totalTasks = await dbHelpers.getCompletedTasksCount();
-  const projects = await dbHelpers.getProjects();
+  // Get task stats
+  const statsRes = await fetch('/api/tasks/stats');
+  const taskStats = await statsRes.json();
+  const totalTasks = taskStats.completedCount;
+
+  // Get projects count
+  const projectsRes = await fetch('/api/projects');
+  const projects: Project[] = await projectsRes.json();
   const totalProjects = projects.length;
+
   const totalMinutes = totalTasks * 15;
   const totalHours = Math.floor(totalMinutes / 60);
 

@@ -1,5 +1,4 @@
-import { dbHelpers } from '../db';
-import { CommandResult } from '../types';
+import { CommandResult, Project } from '../types';
 import { CommandContext } from './types';
 
 // new project [name] - Create a new project
@@ -15,7 +14,13 @@ export async function newProject(
     };
   }
 
-  const existing = await dbHelpers.getProjectByName(projectName);
+  // Check if project already exists
+  const projectsRes = await fetch('/api/projects');
+  const projects: Project[] = await projectsRes.json();
+  const existing = projects.find(
+    (p) => p.name.toLowerCase() === projectName.toLowerCase()
+  );
+
   if (existing) {
     return {
       success: false,
@@ -23,7 +28,14 @@ export async function newProject(
     };
   }
 
-  const project = await dbHelpers.createProject(projectName);
+  // Create new project
+  const createRes = await fetch('/api/projects', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ name: projectName }),
+  });
+  const project = await createRes.json();
+
   return {
     success: true,
     message: `Created project: ${projectName}`,
@@ -44,7 +56,13 @@ export async function switchProject(
     };
   }
 
-  const project = await dbHelpers.getProjectByName(projectName);
+  // Find project by name
+  const projectsRes = await fetch('/api/projects');
+  const projects: Project[] = await projectsRes.json();
+  const project = projects.find(
+    (p) => p.name.toLowerCase() === projectName.toLowerCase()
+  );
+
   if (!project) {
     return {
       success: false,
@@ -64,7 +82,9 @@ export async function listProjects(
   args: string[],
   context?: CommandContext
 ): Promise<CommandResult> {
-  const projects = await dbHelpers.getProjects();
+  const projectsRes = await fetch('/api/projects');
+  const projects: Project[] = await projectsRes.json();
+
   if (projects.length === 0) {
     return {
       success: true,

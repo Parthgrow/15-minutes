@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { dbHelpers } from '@/lib/db';
 
 interface JellyBean {
   id: string;
@@ -29,7 +28,9 @@ export default function JellyBeanJar() {
 
   useEffect(() => {
     const loadCount = async () => {
-      const count = await dbHelpers.getCompletedTasksCount();
+      const statsRes = await fetch('/api/tasks/stats');
+      const stats = await statsRes.json();
+      const count = stats.completedCount || 0;
 
       // If count increased, show new bean animation
       if (count > totalBeans) {

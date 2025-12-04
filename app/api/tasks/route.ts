@@ -1,12 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
+import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/firebase/config';
 import { randomUUID } from 'crypto';
 
 // GET /api/tasks - Get tasks with filters
 // Query params: projectId, featureId, includeCompleted
 export async function GET(request: NextRequest) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
@@ -58,7 +59,7 @@ export async function GET(request: NextRequest) {
 // POST /api/tasks - Create a new task
 // If featureId is not provided, auto-assigns to "General" feature
 export async function POST(request: NextRequest) {
-  const session = await getServerSession();
+  const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
   }
