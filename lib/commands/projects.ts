@@ -14,27 +14,12 @@ export async function newProject(
     };
   }
 
-  // Check if project already exists
-  const projectsRes = await fetch('/api/projects');
-  const projects: Project[] = await projectsRes.json();
-  const existing = projects.find(
-    (p) => p.name.toLowerCase() === projectName.toLowerCase()
-  );
-
-  if (existing) {
-    return {
-      success: false,
-      message: `Project "${projectName}" already exists`,
-    };
-  }
-
-  // Create new project
-  const createRes = await fetch('/api/projects', {
+  const res = await fetch('/api/projects', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ name: projectName }),
   });
-  const project = await createRes.json();
+  const project = await res.json();
 
   return {
     success: true,

@@ -12,12 +12,12 @@ export async function GET() {
   }
 
   try {
-    const projectsRef = db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('projects');
+    const snapshot = await db
+      .collection('projects')
+      .where('userId', '==', session.user.id)
+      .orderBy('createdAt', 'desc')
+      .get();
 
-    const snapshot = await projectsRef.orderBy('createdAt', 'desc').get();
     const projects = snapshot.docs.map((doc) => doc.data());
 
     return NextResponse.json(projects);
@@ -51,17 +51,13 @@ export async function POST(request: NextRequest) {
     const projectId = randomUUID();
     const project = {
       id: projectId,
+      userId: session.user.id,
       name,
       createdAt: Date.now(),
       tasksCompleted: 0,
     };
 
-    await db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('projects')
-      .doc(projectId)
-      .set(project);
+    await db.collection('projects').doc(projectId).set(project);
 
     return NextResponse.json(project, { status: 201 });
   } catch (error) {
