@@ -22,20 +22,20 @@ export async function newFeature(
   }
 
   // Check if feature already exists
-  const featuresRes = await fetch(
-    `/api/features?projectId=${context.currentProjectId}`
-  );
-  const features: Feature[] = await featuresRes.json();
-  const existing = features.find(
-    (f) => f.name.toLowerCase() === featureName.toLowerCase()
-  );
+  // const featuresRes = await fetch(
+  //   `/api/features?projectId=${context.currentProjectId}`
+  // );
+  // const features: Feature[] = await featuresRes.json();
+  // const existing = features.find(
+  //   (f) => f.name.toLowerCase() === featureName.toLowerCase()
+  // );
 
-  if (existing) {
-    return {
-      success: false,
-      message: `Feature "${featureName}" already exists in this project`,
-    };
-  }
+  // if (existing) {
+  //   return {
+  //     success: false,
+  //     message: `Feature "${featureName}" already exists in this project`,
+  //   };
+  // }
 
   // Create new feature
   const createRes = await fetch('/api/features', {

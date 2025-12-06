@@ -15,7 +15,7 @@ export async function GET() {
     const snapshot = await db
       .collection('projects')
       .where('userId', '==', session.user.id)
-      .orderBy('createdAt', 'desc')
+      // .orderBy('createdAt', 'desc')
       .get();
 
     const projects = snapshot.docs.map((doc) => doc.data());

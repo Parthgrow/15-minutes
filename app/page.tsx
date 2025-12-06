@@ -13,11 +13,24 @@ export default function Home() {
     string | undefined
   >();
   const [showCelebration, setShowCelebration] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0); // Triggers TaskList refetch
   const { data: session } = useSession();
   const router = useRouter();
 
   const handleTaskComplete = () => {
     setShowCelebration(true);
+    // Also refresh task list when task is completed
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleTaskAdded = () => {
+    // Trigger TaskList refetch when task is added
+    setRefreshKey((k) => k + 1);
+  };
+
+  const handleFeatureAdded = () => {
+    // Trigger TaskList refetch when feature is added
+    setRefreshKey((k) => k + 1);
   };
 
   const handleLogout = async () => {
@@ -65,7 +78,7 @@ export default function Home() {
 
           {/* Task List */}
           <div className="flex-1 overflow-y-auto">
-            <TaskList projectId={currentProjectId} />
+            <TaskList projectId={currentProjectId} refreshKey={refreshKey} />
           </div>
         </div>
 
@@ -75,6 +88,8 @@ export default function Home() {
             currentProjectId={currentProjectId}
             onTaskComplete={handleTaskComplete}
             onProjectChange={setCurrentProjectId}
+            onTaskAdded={handleTaskAdded}
+            onFeatureAdded={handleFeatureAdded}
           />
         </div>
       </div>

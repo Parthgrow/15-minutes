@@ -5,6 +5,7 @@ import { Feature, Task } from "@/lib/types";
 
 interface TaskListProps {
   projectId?: string;
+  refreshKey?: number; // Triggers refetch when changed
 }
 
 interface FeatureWithTasks {
@@ -13,7 +14,7 @@ interface FeatureWithTasks {
   featureNumber: number;
 }
 
-export default function TaskList({ projectId }: TaskListProps) {
+export default function TaskList({ projectId, refreshKey }: TaskListProps) {
   const [featuresWithTasks, setFeaturesWithTasks] = useState<
     FeatureWithTasks[]
   >([]);
@@ -21,6 +22,7 @@ export default function TaskList({ projectId }: TaskListProps) {
 
   useEffect(() => {
     if (!projectId) {
+      // Reset state when no project is selected
       setFeaturesWithTasks([]);
       setTotalTasks(0);
       return;
@@ -29,7 +31,9 @@ export default function TaskList({ projectId }: TaskListProps) {
     const loadData = async () => {
       // Fetch features for this project
       const featuresRes = await fetch(`/api/features?projectId=${projectId}`);
+
       const features: Feature[] = await featuresRes.json();
+      console.log("features", features);
 
       let total = 0;
 
@@ -47,16 +51,14 @@ export default function TaskList({ projectId }: TaskListProps) {
         })
       );
 
+      console.log("featuresData", featuresData);
+
       setFeaturesWithTasks(featuresData);
       setTotalTasks(total);
     };
 
     loadData();
-
-    // Poll for updates every 2 seconds
-    const interval = setInterval(loadData, 2000);
-    return () => clearInterval(interval);
-  }, [projectId]);
+  }, [projectId, refreshKey]); // Refetch when projectId or refreshKey changes
 
   if (!projectId) {
     return (
@@ -74,13 +76,13 @@ export default function TaskList({ projectId }: TaskListProps) {
     );
   }
 
-  if (totalTasks === 0) {
-    return (
-      <div className="p-4 font-mono text-sm text-gray-500">
-        No pending tasks. Add one with: add task [description] [feature_id]
-      </div>
-    );
-  }
+  // if (totalTasks === 0) {
+  //   return (
+  //     <div className="p-4 font-mono text-sm text-gray-500">
+  //       No pending tasks. Add one with: add task [description] [feature_id]
+  //     </div>
+  //   );
+  // }
 
   return (
     <div className="p-4 font-mono text-sm">

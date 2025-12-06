@@ -21,14 +21,9 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const featuresRef = db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('features');
-
-    const snapshot = await featuresRef
+    const snapshot = await db
+      .collection('features')
       .where('projectId', '==', projectId)
-      .orderBy('createdAt', 'asc')
       .get();
 
     const features = snapshot.docs.map((doc) => doc.data());
@@ -77,12 +72,7 @@ export async function POST(request: NextRequest) {
       tasksCompleted: 0,
     };
 
-    await db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('features')
-      .doc(featureId)
-      .set(feature);
+    await db.collection('features').doc(featureId).set(feature);
 
     return NextResponse.json(feature, { status: 201 });
   } catch (error) {

@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef, KeyboardEvent } from 'react';
-import { executeCommand } from '@/lib/commands';
-import { CommandResult } from '@/lib/types';
+import { useState, useEffect, useRef, KeyboardEvent } from "react";
+import { executeCommand } from "@/lib/commands";
+import { CommandResult } from "@/lib/types";
 
 interface Message {
-  type: 'input' | 'output' | 'error';
+  type: "input" | "output" | "error";
   content: string;
   timestamp: number;
 }
@@ -14,11 +14,19 @@ interface ChatInterfaceProps {
   currentProjectId?: string;
   onTaskComplete?: () => void;
   onProjectChange?: (projectId: string) => void;
+  onTaskAdded?: () => void; // Callback when task is added
+  onFeatureAdded?: () => void; // Callback when feature is added
 }
 
-export default function ChatInterface({ currentProjectId, onTaskComplete, onProjectChange }: ChatInterfaceProps) {
+export default function ChatInterface({
+  currentProjectId,
+  onTaskComplete,
+  onProjectChange,
+  onTaskAdded,
+  onFeatureAdded,
+}: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([]);
-  const [input, setInput] = useState('');
+  const [input, setInput] = useState("");
   const [history, setHistory] = useState<string[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -28,7 +36,7 @@ export default function ChatInterface({ currentProjectId, onTaskComplete, onProj
     // Show welcome message on mount
     setMessages([
       {
-        type: 'output',
+        type: "output",
         content: `╔══════════════════════════════════════╗
 ║      WELCOME TO 15 MINUTES          ║
 ╚══════════════════════════════════════╝
@@ -36,14 +44,14 @@ export default function ChatInterface({ currentProjectId, onTaskComplete, onProj
 Build great things, 15 minutes at a time.
 Type 'help' to see available commands.
 `,
-        timestamp: Date.now()
-      }
+        timestamp: Date.now(),
+      },
     ]);
   }, []);
 
   useEffect(() => {
     // Auto-scroll to bottom
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   useEffect(() => {
@@ -57,37 +65,49 @@ Type 'help' to see available commands.
 
     // Add input to messages
     const userMessage: Message = {
-      type: 'input',
+      type: "input",
       content: input,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, userMessage]);
-    setHistory(prev => [...prev, input]);
+    setMessages((prev) => [...prev, userMessage]);
+    setHistory((prev) => [...prev, input]);
     setHistoryIndex(-1);
 
     // Execute command
-    const result: CommandResult = await executeCommand(input, { currentProjectId });
+    const result: CommandResult = await executeCommand(input, {
+      currentProjectId,
+    });
 
     // Handle clear command
     if (result.data?.clear) {
       setMessages([]);
-      setInput('');
+      setInput("");
       return;
     }
 
     // Add output to messages
     const outputMessage: Message = {
-      type: result.success ? 'output' : 'error',
+      type: result.success ? "output" : "error",
       content: result.message,
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
 
-    setMessages(prev => [...prev, outputMessage]);
+    setMessages((prev) => [...prev, outputMessage]);
 
     // Trigger celebration if task completed
     if (result.data?.celebrate && onTaskComplete) {
       onTaskComplete();
+    }
+
+    // Trigger refresh if task was added
+    if (result.data?.task && onTaskAdded) {
+      onTaskAdded();
+    }
+
+    // Trigger refresh if feature was added
+    if (result.data?.feature && onFeatureAdded) {
+      onFeatureAdded();
     }
 
     // Update project if switched or created
@@ -95,25 +115,28 @@ Type 'help' to see available commands.
       onProjectChange(result.data.project.id);
     }
 
-    setInput('');
+    setInput("");
   };
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'ArrowUp') {
+    if (e.key === "ArrowUp") {
       e.preventDefault();
       if (history.length === 0) return;
 
-      const newIndex = historyIndex === -1 ? history.length - 1 : Math.max(0, historyIndex - 1);
+      const newIndex =
+        historyIndex === -1
+          ? history.length - 1
+          : Math.max(0, historyIndex - 1);
       setHistoryIndex(newIndex);
       setInput(history[newIndex]);
-    } else if (e.key === 'ArrowDown') {
+    } else if (e.key === "ArrowDown") {
       e.preventDefault();
       if (historyIndex === -1) return;
 
       const newIndex = historyIndex + 1;
       if (newIndex >= history.length) {
         setHistoryIndex(-1);
-        setInput('');
+        setInput("");
       } else {
         setHistoryIndex(newIndex);
         setInput(history[newIndex]);
@@ -127,13 +150,19 @@ Type 'help' to see available commands.
       <div className="flex-1 overflow-y-auto p-4 font-mono text-sm">
         {messages.map((msg, idx) => (
           <div key={idx} className="mb-2">
-            {msg.type === 'input' ? (
+            {msg.type === "input" ? (
               <div className="text-green-400">
-                <span className="text-green-500">{'>'}</span> {msg.content}
+                <span className="text-green-500">{">"}</span> {msg.content}
               </div>
             ) : (
-              <div className={msg.type === 'error' ? 'text-red-400' : 'text-gray-300'}>
-                <pre className="whitespace-pre-wrap font-mono">{msg.content}</pre>
+              <div
+                className={
+                  msg.type === "error" ? "text-red-400" : "text-gray-300"
+                }
+              >
+                <pre className="whitespace-pre-wrap font-mono">
+                  {msg.content}
+                </pre>
               </div>
             )}
           </div>
@@ -144,7 +173,7 @@ Type 'help' to see available commands.
       {/* Input area */}
       <form onSubmit={handleSubmit} className="border-t border-gray-700 p-4">
         <div className="flex items-center gap-2 font-mono">
-          <span className="text-green-500">{'>'}</span>
+          <span className="text-green-500">{">"}</span>
           <input
             ref={inputRef}
             type="text"

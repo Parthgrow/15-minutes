@@ -4,8 +4,8 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/firebase/config';
 import { randomUUID } from 'crypto';
 
-// GET /api/tasks - Get tasks with filters
-// Query params: projectId, featureId, includeCompleted
+// GET /api/tasks - Get tasks for a feature
+// Query params: featureId, includeCompleted
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -14,30 +14,19 @@ export async function GET(request: NextRequest) {
 
   try {
     const searchParams = request.nextUrl.searchParams;
-    const projectId = searchParams.get('projectId');
     const featureId = searchParams.get('featureId');
     const includeCompleted = searchParams.get('includeCompleted') === 'true';
 
-    if (!projectId && !featureId) {
+    if (!featureId) {
       return NextResponse.json(
-        { error: 'projectId or featureId is required' },
+        { error: 'featureId is required' },
         { status: 400 }
       );
     }
 
-    let query = db
-      .collection('users')
-      .doc(session.user.id)
+    let query: FirebaseFirestore.Query = db
       .collection('tasks')
-      .orderBy('createdAt', 'desc') as FirebaseFirestore.Query;
-
-    if (projectId) {
-      query = query.where('projectId', '==', projectId);
-    }
-
-    if (featureId) {
-      query = query.where('featureId', '==', featureId);
-    }
+      .where('featureId', '==', featureId);
 
     if (!includeCompleted) {
       query = query.where('completedAt', '==', null);
@@ -57,7 +46,6 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/tasks - Create a new task
-// If featureId is not provided, auto-assigns to "General" feature
 export async function POST(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -66,11 +54,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { projectId, featureId, description } = body;
+    const { featureId, description } = body;
 
-    if (!projectId || typeof projectId !== 'string') {
+    if (!featureId || typeof featureId !== 'string') {
       return NextResponse.json(
-        { error: 'projectId is required' },
+        { error: 'featureId is required' },
         { status: 400 }
       );
     }
@@ -82,57 +70,17 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userId = session.user.id;
-    let finalFeatureId = featureId;
-
-    // If no featureId provided, get or create "General" feature
-    if (!finalFeatureId) {
-      const featuresRef = db
-        .collection('users')
-        .doc(userId)
-        .collection('features');
-
-      // Check if "General" feature exists for this project
-      const existingSnapshot = await featuresRef
-        .where('projectId', '==', projectId)
-        .where('name', '==', 'General')
-        .limit(1)
-        .get();
-
-      if (!existingSnapshot.empty) {
-        finalFeatureId = existingSnapshot.docs[0].data().id;
-      } else {
-        // Create "General" feature
-        const generalFeatureId = randomUUID();
-        const generalFeature = {
-          id: generalFeatureId,
-          projectId,
-          name: 'General',
-          createdAt: Date.now(),
-          tasksCompleted: 0,
-        };
-        await featuresRef.doc(generalFeatureId).set(generalFeature);
-        finalFeatureId = generalFeatureId;
-      }
-    }
-
     const taskId = randomUUID();
     const task = {
       id: taskId,
-      projectId,
-      featureId: finalFeatureId,
+      featureId,
       description,
       completedAt: null,
       createdAt: Date.now(),
       duration: 15,
     };
 
-    await db
-      .collection('users')
-      .doc(userId)
-      .collection('tasks')
-      .doc(taskId)
-      .set(task);
+    await db.collection('tasks').doc(taskId).set(task);
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
