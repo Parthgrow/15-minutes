@@ -17,12 +17,7 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const taskDoc = await db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('tasks')
-      .doc(id)
-      .get();
+    const taskDoc = await db.collection('tasks').doc(id).get();
 
     if (!taskDoc.exists) {
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
@@ -53,13 +48,7 @@ export async function PATCH(
     const body = await request.json();
     const { completed } = body;
 
-    const userId = session.user.id;
-    const taskRef = db
-      .collection('users')
-      .doc(userId)
-      .collection('tasks')
-      .doc(id);
-
+    const taskRef = db.collection('tasks').doc(id);
     const taskDoc = await taskRef.get();
 
     if (!taskDoc.exists) {
@@ -75,25 +64,21 @@ export async function PATCH(
       // Update task
       await taskRef.update({ completedAt });
 
-      // Increment project's tasksCompleted
-      const projectRef = db
-        .collection('users')
-        .doc(userId)
-        .collection('projects')
-        .doc(task.projectId);
-      await projectRef.update({
-        tasksCompleted: FieldValue.increment(1),
-      });
-
       // Increment feature's tasksCompleted
-      const featureRef = db
-        .collection('users')
-        .doc(userId)
-        .collection('features')
-        .doc(task.featureId);
+      const featureRef = db.collection('features').doc(task.featureId);
       await featureRef.update({
         tasksCompleted: FieldValue.increment(1),
       });
+
+      // Get the feature to find the projectId, then increment project's tasksCompleted
+      const featureDoc = await featureRef.get();
+      if (featureDoc.exists) {
+        const feature = featureDoc.data()!;
+        const projectRef = db.collection('projects').doc(feature.projectId);
+        await projectRef.update({
+          tasksCompleted: FieldValue.increment(1),
+        });
+      }
 
       return NextResponse.json({ ...task, completedAt });
     }
@@ -121,12 +106,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const taskRef = db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('tasks')
-      .doc(id);
-
+    const taskRef = db.collection('tasks').doc(id);
     const taskDoc = await taskRef.get();
 
     if (!taskDoc.exists) {

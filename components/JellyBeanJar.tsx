@@ -45,8 +45,8 @@ export default function JellyBeanJar() {
     loadCount();
 
     // Poll for updates
-    const interval = setInterval(loadCount, 2000);
-    return () => clearInterval(interval);
+    // const interval = setInterval(loadCount, 2000);
+    // return () => clearInterval(interval);
   }, [totalBeans]);
 
   const generateBeans = (count: number) => {
