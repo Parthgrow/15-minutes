@@ -5,9 +5,18 @@ export interface Project {
   tasksCompleted: number;
 }
 
+export interface Feature {
+  id: string;
+  projectId: string;
+  name: string;
+  createdAt: number;
+  tasksCompleted: number;
+}
+
 export interface Task {
   id: string;
   projectId: string;
+  featureId: string;
   description: string;
   completedAt: number | null;
   createdAt: number;
