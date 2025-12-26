@@ -14,30 +14,48 @@ export async function GET(request: NextRequest) {
   try {
     const projectId = request.nextUrl.searchParams.get('projectId');
 
-    const tasksRef = db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('tasks');
-
-    let baseQuery: FirebaseFirestore.Query = tasksRef;
-
+    // If projectId filter is requested, query tasks directly
     if (projectId) {
-      baseQuery = baseQuery.where('projectId', '==', projectId);
+      const completedSnapshot = await db
+        .collection('tasks')
+        .where('userId', '==', session.user.id)
+        .where('projectId', '==', projectId)
+        .where('completedAt', '!=', null)
+        .count()
+        .get();
+
+      const pendingSnapshot = await db
+        .collection('tasks')
+        .where('userId', '==', session.user.id)
+        .where('projectId', '==', projectId)
+        .where('completedAt', '==', null)
+        .count()
+        .get();
+
+      const completedCount = completedSnapshot.data().count;
+      const pendingCount = pendingSnapshot.data().count;
+
+      return NextResponse.json({
+        completedCount,
+        pendingCount,
+        totalCount: completedCount + pendingCount,
+      });
     }
 
-    // Get completed count using Firestore count aggregation
-    const completedSnapshot = await baseQuery
-      .where('completedAt', '!=', null)
-      .count()
-      .get();
-    const completedCount = completedSnapshot.data().count;
+    // No filter - read from user's stats object (fast!)
+    const userDoc = await db.doc(`users/${session.user.id}`).get();
 
-    // Get pending count
-    const pendingSnapshot = await baseQuery
-      .where('completedAt', '==', null)
-      .count()
-      .get();
-    const pendingCount = pendingSnapshot.data().count;
+    if (!userDoc.exists || !userDoc.data()?.stats) {
+      return NextResponse.json({
+        completedCount: 0,
+        pendingCount: 0,
+        totalCount: 0,
+      });
+    }
+
+    const stats = userDoc.data()!.stats;
+    const completedCount = stats.totalCompleted || 0;
+    const pendingCount = stats.totalPending || 0;
 
     return NextResponse.json({
       completedCount,

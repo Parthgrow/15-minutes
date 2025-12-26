@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/firebase/config';
 import { randomUUID } from 'crypto';
+import { incrementPendingStats } from '@/lib/firebase/stats';
 
 // GET /api/tasks - Get tasks for a feature
 // Query params: featureId, includeCompleted
@@ -70,6 +71,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    // Fetch feature to get projectId
+    const featureDoc = await db.collection('features').doc(featureId).get();
+    if (!featureDoc.exists) {
+      return NextResponse.json({ error: 'Feature not found' }, { status: 404 });
+    }
+    const projectId = featureDoc.data()?.projectId;
+
     const taskId = randomUUID();
     const task = {
       id: taskId,
@@ -78,9 +86,16 @@ export async function POST(request: NextRequest) {
       completedAt: null,
       createdAt: Date.now(),
       duration: 15,
+      // Denormalized fields for efficient queries
+      userId: session.user.id,
+      projectId,
+      completedDate: null,
     };
 
     await db.collection('tasks').doc(taskId).set(task);
+
+    // Update pending count in stats
+    await incrementPendingStats(session.user.id);
 
     return NextResponse.json(task, { status: 201 });
   } catch (error) {
