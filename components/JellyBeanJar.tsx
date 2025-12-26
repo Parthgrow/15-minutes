@@ -26,28 +26,7 @@ export default function JellyBeanJar() {
   const [beans, setBeans] = useState<JellyBean[]>([]);
   const [showNew, setShowNew] = useState(false);
 
-  useEffect(() => {
-    const loadCount = async () => {
-      const statsRes = await fetch('/api/tasks/stats');
-      const stats = await statsRes.json();
-      const count = stats.completedCount || 0;
 
-      // If count increased, show new bean animation
-      if (count > totalBeans) {
-        setShowNew(true);
-        setTimeout(() => setShowNew(false), 1000);
-      }
-
-      setTotalBeans(count);
-      generateBeans(count);
-    };
-
-    loadCount();
-
-    // Poll for updates
-    // const interval = setInterval(loadCount, 2000);
-    // return () => clearInterval(interval);
-  }, [totalBeans]);
 
   const generateBeans = (count: number) => {
     const newBeans: JellyBean[] = [];
@@ -69,6 +48,33 @@ export default function JellyBeanJar() {
 
     setBeans(newBeans);
   };
+
+  useEffect(() => {
+    const loadCount = async () => {
+      const statsRes = await fetch('/api/tasks/stats');
+      const stats = await statsRes.json();
+
+      console.log("[results] : /api/tasks/stats ", stats); 
+      const count = stats.completedCount || 0;
+
+      // If count increased, show new bean animation
+      if (count > totalBeans) {
+        setShowNew(true);
+        setTimeout(() => setShowNew(false), 1000);
+      }
+
+      setTotalBeans(count);
+      generateBeans(count);
+    };
+
+    loadCount();
+
+    // Poll for updates
+    // const interval = setInterval(loadCount, 2000);
+    // return () => clearInterval(interval);
+  }, [totalBeans]);
+
+
 
   return (
     <div className="flex flex-col items-center p-6">

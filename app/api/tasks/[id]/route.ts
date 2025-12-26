@@ -3,6 +3,13 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/firebase/config';
 import { FieldValue } from 'firebase-admin/firestore';
+import {
+  incrementCompletedStats,
+  decrementCompletedStats,
+  decrementPendingStats,
+  decrementCompletedStatsOnDelete,
+  toDateString,
+} from '@/lib/firebase/stats';
 
 // GET /api/tasks/[id] - Get a task by ID
 export async function GET(
@@ -33,7 +40,7 @@ export async function GET(
   }
 }
 
-// PATCH /api/tasks/[id] - Update a task (mark as complete)
+// PATCH /api/tasks/[id] - Update a task (mark as complete/uncomplete)
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -56,13 +63,21 @@ export async function PATCH(
     }
 
     const task = taskDoc.data()!;
+    const userId = task.userId || session.user.id;
 
-    // If marking as complete
-    if (completed === true && task.completedAt === null) {
+    const wasCompleted = task.completedAt !== null;
+    const isNowCompleted = completed === true;
+
+    // Task is being completed
+    if (!wasCompleted && isNowCompleted) {
       const completedAt = Date.now();
+      const completedDate = toDateString(completedAt);
 
-      // Update task
-      await taskRef.update({ completedAt });
+      // Update task with completion info
+      await taskRef.update({ completedAt, completedDate });
+
+      // Update user stats (summary + daily aggregation)
+      await incrementCompletedStats(userId, completedDate);
 
       // Increment feature's tasksCompleted
       const featureRef = db.collection('features').doc(task.featureId);
@@ -80,7 +95,36 @@ export async function PATCH(
         });
       }
 
-      return NextResponse.json({ ...task, completedAt });
+      return NextResponse.json({ ...task, completedAt, completedDate });
+    }
+
+    // Task is being uncompleted
+    if (wasCompleted && !isNowCompleted) {
+      const previousDate = task.completedDate || toDateString(task.completedAt);
+
+      // Update task to remove completion
+      await taskRef.update({ completedAt: null, completedDate: null });
+
+      // Update user stats
+      await decrementCompletedStats(userId, previousDate);
+
+      // Decrement feature's tasksCompleted
+      const featureRef = db.collection('features').doc(task.featureId);
+      await featureRef.update({
+        tasksCompleted: FieldValue.increment(-1),
+      });
+
+      // Decrement project's tasksCompleted
+      const featureDoc = await featureRef.get();
+      if (featureDoc.exists) {
+        const feature = featureDoc.data()!;
+        const projectRef = db.collection('projects').doc(feature.projectId);
+        await projectRef.update({
+          tasksCompleted: FieldValue.increment(-1),
+        });
+      }
+
+      return NextResponse.json({ ...task, completedAt: null, completedDate: null });
     }
 
     return NextResponse.json(task);
@@ -95,7 +139,7 @@ export async function PATCH(
 
 // DELETE /api/tasks/[id] - Delete a task
 export async function DELETE(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const session = await getServerSession(authOptions);
@@ -113,7 +157,20 @@ export async function DELETE(
       return NextResponse.json({ error: 'Task not found' }, { status: 404 });
     }
 
+    const task = taskDoc.data()!;
+    const userId = task.userId || session.user.id;
+
     await taskRef.delete();
+
+    // Update stats based on task state
+    if (task.completedAt !== null) {
+      // Was completed - decrement completed count and daily aggregation
+      const completedDate = task.completedDate || toDateString(task.completedAt);
+      await decrementCompletedStatsOnDelete(userId, completedDate);
+    } else {
+      // Was pending - decrement pending count
+      await decrementPendingStats(userId);
+    }
 
     return NextResponse.json({ message: 'Task deleted successfully' });
   } catch (error) {
