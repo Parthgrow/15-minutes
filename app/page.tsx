@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import ChatInterface from "@/components/ChatInterface";
@@ -14,12 +14,22 @@ export default function Home() {
   >();
   const [showCelebration, setShowCelebration] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Triggers TaskList refetch
+  const [completedCount, setCompletedCount] = useState(0);
   const { data: session } = useSession();
   const router = useRouter();
 
+  useEffect(() => {
+    const loadStats = async () => {
+      const res = await fetch("/api/tasks/stats");
+      const stats = await res.json();
+      setCompletedCount(stats.completedCount ?? 0);
+    };
+    loadStats();
+  }, [refreshKey]);
+
   const handleTaskComplete = () => {
     setShowCelebration(true);
-    // Also refresh task list when task is completed
+    // Refresh task list and jelly bean stats when task is completed
     setRefreshKey((k) => k + 1);
   };
 
@@ -73,7 +83,7 @@ export default function Home() {
         <div className="w-80 border-r border-gray-800 flex flex-col">
           {/* Jelly Bean Jar */}
           <div className="border-b border-gray-800">
-            <JellyBeanJar />
+            <JellyBeanJar completedCount={completedCount} />
           </div>
 
           {/* Task List */}

@@ -1,7 +1,7 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useEffect, useState, useMemo, useRef } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface JellyBean {
   id: string;
@@ -12,81 +12,81 @@ interface JellyBean {
 }
 
 const COLORS = [
-  '#ef4444', // red
-  '#f59e0b', // amber
-  '#10b981', // green
-  '#3b82f6', // blue
-  '#8b5cf6', // purple
-  '#ec4899', // pink
-  '#f97316', // orange
+  "#ef4444", // red
+  "#f59e0b", // amber
+  "#10b981", // green
+  "#3b82f6", // blue
+  "#8b5cf6", // purple
+  "#ec4899", // pink
+  "#f97316", // orange
 ];
 
-export default function JellyBeanJar() {
-  const [totalBeans, setTotalBeans] = useState(0);
-  const [beans, setBeans] = useState<JellyBean[]>([]);
+function generateBeans(count: number): JellyBean[] {
+  const beans: JellyBean[] = [];
+  const maxDisplay = Math.min(count, 50);
+
+  for (let i = 0; i < maxDisplay; i++) {
+    const row = Math.floor(i / 6);
+    const col = i % 6;
+    beans.push({
+      id: `bean-${i}`,
+      x: 15 + col * 25 + (row % 2) * 12,
+      y: 220 - row * 20,
+      color: COLORS[i % COLORS.length],
+      rotation: ((i * 17) % 31) - 15,
+    });
+  }
+  return beans;
+}
+
+interface JellyBeanJarProps {
+  completedCount: number;
+}
+
+export default function JellyBeanJar({ completedCount }: JellyBeanJarProps) {
   const [showNew, setShowNew] = useState(false);
+  const prevCountRef = useRef(completedCount);
 
-
-
-  const generateBeans = (count: number) => {
-    const newBeans: JellyBean[] = [];
-    const maxDisplay = Math.min(count, 50); // Show max 50 beans visually
-
-    for (let i = 0; i < maxDisplay; i++) {
-      // Distribute beans in jar (bottom to top)
-      const row = Math.floor(i / 6);
-      const col = i % 6;
-
-      newBeans.push({
-        id: `bean-${i}`,
-        x: 15 + col * 25 + (row % 2) * 12, // Offset alternate rows
-        y: 220 - row * 20, // Stack from bottom
-        color: COLORS[i % COLORS.length],
-        rotation: Math.random() * 30 - 15
-      });
-    }
-
-    setBeans(newBeans);
-  };
+  const beans = useMemo(() => generateBeans(completedCount), [completedCount]);
 
   useEffect(() => {
-    const loadCount = async () => {
-      const statsRes = await fetch('/api/tasks/stats');
-      const stats = await statsRes.json();
-
-      console.log("[results] : /api/tasks/stats ", stats); 
-      const count = stats.completedCount || 0;
-
-      // If count increased, show new bean animation
-      if (count > totalBeans) {
-        setShowNew(true);
-        setTimeout(() => setShowNew(false), 1000);
-      }
-
-      setTotalBeans(count);
-      generateBeans(count);
-    };
-
-    loadCount();
-
-    // Poll for updates
-    // const interval = setInterval(loadCount, 2000);
-    // return () => clearInterval(interval);
-  }, [totalBeans]);
-
-
+    if (completedCount > prevCountRef.current) {
+      prevCountRef.current = completedCount;
+      const id = setTimeout(() => setShowNew(true), 0);
+      const id2 = setTimeout(() => setShowNew(false), 1000);
+      return () => {
+        clearTimeout(id);
+        clearTimeout(id2);
+      };
+    }
+    prevCountRef.current = completedCount;
+  }, [completedCount]);
 
   return (
     <div className="flex flex-col items-center p-6">
       {/* Jar SVG */}
       <div className="relative">
-        <svg width="200" height="280" viewBox="0 0 200 280" className="drop-shadow-lg">
+        <svg
+          width="200"
+          height="280"
+          viewBox="0 0 200 280"
+          className="drop-shadow-lg"
+        >
           {/* Jar body */}
           <defs>
             <linearGradient id="jarGlass" x1="0%" y1="0%" x2="100%" y2="0%">
-              <stop offset="0%" style={{ stopColor: '#4b5563', stopOpacity: 0.3 }} />
-              <stop offset="50%" style={{ stopColor: '#6b7280', stopOpacity: 0.2 }} />
-              <stop offset="100%" style={{ stopColor: '#4b5563', stopOpacity: 0.3 }} />
+              <stop
+                offset="0%"
+                style={{ stopColor: "#4b5563", stopOpacity: 0.3 }}
+              />
+              <stop
+                offset="50%"
+                style={{ stopColor: "#6b7280", stopOpacity: 0.2 }}
+              />
+              <stop
+                offset="100%"
+                style={{ stopColor: "#4b5563", stopOpacity: 0.3 }}
+              />
             </linearGradient>
           </defs>
 
@@ -126,18 +126,12 @@ export default function JellyBeanJar() {
           />
 
           {/* Lid top */}
-          <ellipse
-            cx="100"
-            cy="25"
-            rx="35"
-            ry="6"
-            fill="#9ca3af"
-          />
+          <ellipse cx="100" cy="25" rx="35" ry="6" fill="#9ca3af" />
 
           {/* Jelly beans */}
           <g>
             <AnimatePresence>
-              {beans.map((bean) => (
+              {beans.map((bean, index) => (
                 <motion.ellipse
                   key={bean.id}
                   cx={bean.x}
@@ -149,13 +143,13 @@ export default function JellyBeanJar() {
                   initial={{ scale: 0, y: 0 }}
                   animate={{ scale: 1, y: bean.y }}
                   transition={{
-                    type: 'spring',
+                    type: "spring",
                     stiffness: 200,
                     damping: 15,
-                    delay: Math.random() * 0.2
+                    delay: (index % 5) * 0.05,
                   }}
                   style={{
-                    filter: 'drop-shadow(1px 1px 2px rgba(0,0,0,0.3))'
+                    filter: "drop-shadow(1px 1px 2px rgba(0,0,0,0.3))",
                   }}
                 />
               ))}
@@ -182,7 +176,7 @@ export default function JellyBeanJar() {
               initial={{ scale: 0, rotate: -12 }}
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0 }}
-              transition={{ type: 'spring', stiffness: 500, damping: 15 }}
+              transition={{ type: "spring", stiffness: 500, damping: 15 }}
             >
               +1
             </motion.div>
@@ -193,13 +187,13 @@ export default function JellyBeanJar() {
       {/* Counter */}
       <div className="mt-4 text-center font-mono">
         <div className="text-3xl font-bold text-green-400">
-          {totalBeans}
+          {completedCount}
         </div>
         <div className="text-sm text-gray-500 mt-1">
-          {totalBeans === 1 ? 'jelly bean' : 'jelly beans'}
+          {completedCount === 1 ? "jelly bean" : "jelly beans"}
         </div>
         <div className="text-xs text-gray-600 mt-1">
-          {totalBeans * 15} minutes focused
+          {completedCount * 15} minutes focused
         </div>
       </div>
     </div>
