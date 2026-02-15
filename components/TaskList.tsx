@@ -106,7 +106,7 @@ export default function TaskList({ projectId, refreshKey }: TaskListProps) {
                       [{featureNumber}.{taskIdx + 1}]
                     </span>
                     <span className="flex-1">{task.description}</span>
-                    <span className="text-gray-500 text-xs">15min</span>
+                    <span className="text-gray-500 text-xs">{task.duration}min</span>
                   </div>
                 ))}
               </div>

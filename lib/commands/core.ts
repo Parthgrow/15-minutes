@@ -30,7 +30,7 @@ export async function newCommand(
   };
 }
 
-// add task [description] [feature_id]
+// add task [description] [feature_id] [--30]
 export async function addCommand(
   args: string[],
   context?: CommandContext
@@ -38,7 +38,7 @@ export async function addCommand(
   if (args[0] !== 'task') {
     return {
       success: false,
-      message: 'Usage: add task [description] [feature_id]',
+      message: 'Usage: add task [description] [feature_id] [--30]',
     };
   }
   return addTask(args.slice(1), context);
@@ -56,8 +56,9 @@ export async function stats(): Promise<CommandResult> {
   const projects: Project[] = await projectsRes.json();
   const totalProjects = projects.length;
 
-  const totalMinutes = totalTasks * 15;
+  const totalMinutes = taskStats.totalMinutes ?? totalTasks * 15;
   const totalHours = Math.floor(totalMinutes / 60);
+  const jellyBeans = Math.floor(totalMinutes / 15);
 
   const statsMessage = `
 ╔══════════════════════════════════════╗
@@ -67,7 +68,7 @@ export async function stats(): Promise<CommandResult> {
 Total Projects: ${totalProjects}
 Total Tasks Completed: ${totalTasks}
 Total Time Invested: ${totalHours}h ${totalMinutes % 60}m
-Jelly Beans Earned: ${totalTasks}
+Jelly Beans Earned: ${jellyBeans}
 `;
 
   return {
@@ -95,7 +96,9 @@ FEATURE MANAGEMENT:
 
 TASK MANAGEMENT:
   add task [desc] [id]      Add a 15min task to a feature
+  add task [desc] [id] --30 Add a 30min task to a feature
                             Example: add task "implement login" 1
+                            Example: add task "build auth flow" 1 --30
   tasks                     List pending tasks (grouped by feature)
   complete [feature.task]   Complete a task
                             Example: complete 1.2
@@ -105,7 +108,7 @@ OTHER:
   help                      Show this help
   clear                     Clear terminal
 
-Pro tip: All tasks are 15 minutes. Stay focused!
+Pro tip: Tasks are 15 or 30 minutes. Stay focused!
 `;
 
   return {

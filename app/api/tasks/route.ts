@@ -55,7 +55,8 @@ export async function POST(request: NextRequest) {
 
   try {
     const body = await request.json();
-    const { featureId, description } = body;
+    const { featureId, description, duration: rawDuration } = body;
+    const duration = rawDuration === 30 ? 30 : 15;
 
     if (!featureId || typeof featureId !== 'string') {
       return NextResponse.json(
@@ -85,7 +86,7 @@ export async function POST(request: NextRequest) {
       description,
       completedAt: null,
       createdAt: Date.now(),
-      duration: 15,
+      duration,
       // Denormalized fields for efficient queries
       userId: session.user.id,
       projectId,

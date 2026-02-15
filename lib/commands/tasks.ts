@@ -1,7 +1,7 @@
 import { CommandResult, Feature, Task } from '../types';
 import { CommandContext } from './types';
 
-// add task [description] [feature_id] - Add a task to a feature
+// add task [description] [feature_id] [--30] - Add a task to a feature
 export async function addTask(
   args: string[],
   context?: CommandContext
@@ -13,7 +13,12 @@ export async function addTask(
     };
   }
 
-  if (args.length < 2) {
+  // Detect and strip --30 flag
+  const has30Flag = args.includes('--30');
+  const filteredArgs = args.filter((a) => a !== '--30');
+  const duration = has30Flag ? 30 : 15;
+
+  if (filteredArgs.length < 2) {
     return {
       success: false,
       message:
@@ -21,7 +26,7 @@ export async function addTask(
     };
   }
 
-  const featureIdNum = parseInt(args[args.length - 1]);
+  const featureIdNum = parseInt(filteredArgs[filteredArgs.length - 1]);
   if (isNaN(featureIdNum) || featureIdNum < 1) {
     return {
       success: false,
@@ -29,7 +34,7 @@ export async function addTask(
     };
   }
 
-  const description = args.slice(0, -1).join(' ');
+  const description = filteredArgs.slice(0, -1).join(' ');
   if (!description) {
     return {
       success: false,
@@ -59,6 +64,7 @@ export async function addTask(
       projectId: context.currentProjectId,
       featureId: feature.id,
       description,
+      duration,
     }),
   });
   const task = await createRes.json();
@@ -70,7 +76,7 @@ export async function addTask(
 
   return {
     success: true,
-    message: `Added task: ${description} (${featureIdNum}.${taskNumber})`,
+    message: `Added task: ${description} (${featureIdNum}.${taskNumber}) [${duration}min]`,
     data: { task },
   };
 }
