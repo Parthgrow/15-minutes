@@ -41,17 +41,19 @@ function generateBeans(count: number): JellyBean[] {
 
 interface JellyBeanJarProps {
   completedCount: number;
+  totalMinutes: number;
 }
 
-export default function JellyBeanJar({ completedCount }: JellyBeanJarProps) {
+export default function JellyBeanJar({ completedCount, totalMinutes }: JellyBeanJarProps) {
   const [showNew, setShowNew] = useState(false);
-  const prevCountRef = useRef(completedCount);
+  const beanCount = Math.floor(totalMinutes / 15);
+  const prevCountRef = useRef(beanCount);
 
-  const beans = useMemo(() => generateBeans(completedCount), [completedCount]);
+  const beans = useMemo(() => generateBeans(beanCount), [beanCount]);
 
   useEffect(() => {
-    if (completedCount > prevCountRef.current) {
-      prevCountRef.current = completedCount;
+    if (beanCount > prevCountRef.current) {
+      prevCountRef.current = beanCount;
       const id = setTimeout(() => setShowNew(true), 0);
       const id2 = setTimeout(() => setShowNew(false), 1000);
       return () => {
@@ -59,8 +61,8 @@ export default function JellyBeanJar({ completedCount }: JellyBeanJarProps) {
         clearTimeout(id2);
       };
     }
-    prevCountRef.current = completedCount;
-  }, [completedCount]);
+    prevCountRef.current = beanCount;
+  }, [beanCount]);
 
   return (
     <div className="flex flex-col items-center p-6">
@@ -187,13 +189,13 @@ export default function JellyBeanJar({ completedCount }: JellyBeanJarProps) {
       {/* Counter */}
       <div className="mt-4 text-center font-mono">
         <div className="text-3xl font-bold text-green-400">
-          {completedCount}
+          {beanCount}
         </div>
         <div className="text-sm text-gray-500 mt-1">
-          {completedCount === 1 ? "jelly bean" : "jelly beans"}
+          {beanCount === 1 ? "jelly bean" : "jelly beans"}
         </div>
         <div className="text-xs text-gray-600 mt-1">
-          {completedCount * 15} minutes focused
+          {totalMinutes} minutes focused
         </div>
       </div>
     </div>
