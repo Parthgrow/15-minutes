@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/firebase/config';
+import { decrementPendingStats } from '@/lib/firebase/stats';
 
 // GET /api/projects/[id] - Get a project by ID
 export async function GET(
@@ -16,14 +17,9 @@ export async function GET(
   try {
     const { id } = await params;
 
-    const projectDoc = await db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('projects')
-      .doc(id)
-      .get();
+    const projectDoc = await db.collection('projects').doc(id).get();
 
-    if (!projectDoc.exists) {
+    if (!projectDoc.exists || projectDoc.data()?.userId !== session.user.id) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
@@ -37,7 +33,7 @@ export async function GET(
   }
 }
 
-// DELETE /api/projects/[id] - Delete a project
+// DELETE /api/projects/[id] - Delete a project and cascade delete its features and tasks
 export async function DELETE(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -49,19 +45,50 @@ export async function DELETE(
 
   try {
     const { id } = await params;
+    const userId = session.user.id;
 
-    const projectRef = db
-      .collection('users')
-      .doc(session.user.id)
-      .collection('projects')
-      .doc(id);
-
+    const projectRef = db.collection('projects').doc(id);
     const projectDoc = await projectRef.get();
 
-    if (!projectDoc.exists) {
+    if (!projectDoc.exists || projectDoc.data()?.userId !== userId) {
       return NextResponse.json({ error: 'Project not found' }, { status: 404 });
     }
 
+    // Fetch all features belonging to this project
+    const featuresSnap = await db
+      .collection('features')
+      .where('projectId', '==', id)
+      .get();
+
+    // For each feature, fetch and delete its tasks (with stats updates)
+    for (const featureDoc of featuresSnap.docs) {
+      const tasksSnap = await db
+        .collection('tasks')
+        .where('featureId', '==', featureDoc.id)
+        .get();
+
+      const taskBatch = db.batch();
+      const statUpdates: Promise<void>[] = [];
+
+      for (const taskDoc of tasksSnap.docs) {
+        const task = taskDoc.data();
+        taskBatch.delete(taskDoc.ref);
+
+        if (!task.completedAt) {
+          statUpdates.push(decrementPendingStats(userId));
+        }
+        // Completed tasks: leave totalCompleted and dailyStats intact —
+        // earned beans are permanent, deleting a project doesn't erase past work.
+      }
+
+      await taskBatch.commit();
+      await Promise.all(statUpdates);
+
+      // Delete the feature
+      await featureDoc.ref.delete();
+    }
+
+    // Delete the project
     await projectRef.delete();
 
     return NextResponse.json({ message: 'Project deleted successfully' });

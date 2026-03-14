@@ -2,16 +2,16 @@ import { CommandResult } from '../types';
 import { CommandContext, CommandHandler } from './types';
 
 // Project commands
-import { newProject, switchProject, listProjects } from './projects';
+import { newProject, switchProject, listProjects, deleteProject } from './projects';
 
 // Feature commands
-import { newFeature, listFeatures } from './features';
+import { newFeature, listFeatures, deleteFeature } from './features';
 
 // Task commands
-import { addTask, listTasks, completeTask } from './tasks';
+import { addTask, listTasks, completeTask, deleteTask } from './tasks';
 
 // Core commands
-import { newCommand, addCommand, stats, help, clear } from './core';
+import { newCommand, addCommand, deleteCommand, stats, help, clear } from './core';
 
 // Export types
 export type { CommandContext, CommandHandler };
@@ -23,6 +23,7 @@ export const commands: Record<string, CommandHandler> = {
   projects: listProjects,
   features: listFeatures,
   add: addCommand,
+  delete: deleteCommand,
   tasks: listTasks,
   complete: completeTask,
   stats,

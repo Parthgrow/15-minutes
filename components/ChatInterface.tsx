@@ -13,7 +13,7 @@ interface Message {
 interface ChatInterfaceProps {
   currentProjectId?: string;
   onTaskComplete?: () => void;
-  onProjectChange?: (projectId: string) => void;
+  onProjectChange?: (projectId: string | undefined) => void;
   onTaskAdded?: () => void; // Callback when task is added
   onFeatureAdded?: () => void; // Callback when feature is added
 }
@@ -110,9 +110,20 @@ Type 'help' to see available commands.
       onFeatureAdded();
     }
 
+    // Trigger refresh after a delete (feature or task)
+    if (result.data?.refresh && onTaskAdded) {
+      onTaskAdded();
+    }
+
     // Update project if switched or created
     if (result.data?.project && onProjectChange) {
       onProjectChange(result.data.project.id);
+    }
+
+    // Clear active project when it's deleted
+    if (result.data?.deletedProjectId && onProjectChange) {
+      onProjectChange(undefined);
+      if (onTaskAdded) onTaskAdded();
     }
 
     setInput("");

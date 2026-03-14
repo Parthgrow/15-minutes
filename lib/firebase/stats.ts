@@ -4,6 +4,9 @@
  * Handles updating user statistics for task completion tracking.
  * - Summary stats stored in users/{userId}.stats object
  * - Daily stats stored in dailyStats/{userId}_{date} collection
+ *
+ * Philosophy: stats are a permanent ledger of work done.
+ * Completed task stats are never decremented on delete — only on uncomplete.
  */
 
 import { db } from './config';
@@ -47,21 +50,23 @@ export async function decrementPendingStats(userId: string) {
 }
 
 /**
- * Increment stats when a task is completed
+ * Increment stats when a task is completed.
+ * Stores duration permanently — never reversed on delete.
  */
 export async function incrementCompletedStats(
   userId: string,
-  completedDate: string // "YYYY-MM-DD"
+  completedDate: string, // "YYYY-MM-DD"
+  duration: number       // in minutes
 ) {
   const batch = db.batch();
 
-  // Update user's stats object
   const userRef = db.doc(`users/${userId}`);
   batch.set(
     userRef,
     {
       stats: {
         totalCompleted: FieldValue.increment(1),
+        totalMinutes: FieldValue.increment(duration),
         totalPending: FieldValue.increment(-1),
         lastUpdated: Date.now(),
       },
@@ -86,58 +91,24 @@ export async function incrementCompletedStats(
 }
 
 /**
- * Decrement stats when a task is uncompleted
+ * Decrement stats when a task is uncompleted (user reversing their action).
+ * This is the only case where completed stats go down.
  */
 export async function decrementCompletedStats(
   userId: string,
-  completedDate: string
+  completedDate: string,
+  duration: number // in minutes
 ) {
   const batch = db.batch();
 
-  // Update user's stats object
   const userRef = db.doc(`users/${userId}`);
   batch.set(
     userRef,
     {
       stats: {
         totalCompleted: FieldValue.increment(-1),
+        totalMinutes: FieldValue.increment(-duration),
         totalPending: FieldValue.increment(1),
-        lastUpdated: Date.now(),
-      },
-    },
-    { merge: true }
-  );
-
-  // Update daily stats
-  const dailyRef = db.doc(`dailyStats/${userId}_${completedDate}`);
-  batch.set(
-    dailyRef,
-    {
-      count: FieldValue.increment(-1),
-      updatedAt: Date.now(),
-    },
-    { merge: true }
-  );
-
-  await batch.commit();
-}
-
-/**
- * Decrement completed count when a completed task is deleted
- */
-export async function decrementCompletedStatsOnDelete(
-  userId: string,
-  completedDate: string
-) {
-  const batch = db.batch();
-
-  // Update user's stats object
-  const userRef = db.doc(`users/${userId}`);
-  batch.set(
-    userRef,
-    {
-      stats: {
-        totalCompleted: FieldValue.increment(-1),
         lastUpdated: Date.now(),
       },
     },

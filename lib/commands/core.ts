@@ -1,8 +1,8 @@
 import { CommandResult, Project } from '../types';
 import { CommandContext } from './types';
-import { newProject } from './projects';
-import { newFeature } from './features';
-import { addTask } from './tasks';
+import { newProject, deleteProject } from './projects';
+import { newFeature, deleteFeature } from './features';
+import { addTask, deleteTask } from './tasks';
 
 // new project [name] or new feature [name]
 export async function newCommand(
@@ -27,6 +27,36 @@ export async function newCommand(
   return {
     success: false,
     message: 'Usage: new project [name] or new feature [name]',
+  };
+}
+
+// delete project | delete feature [id] | delete task [feature.task]
+export async function deleteCommand(
+  args: string[],
+  context?: CommandContext
+): Promise<CommandResult> {
+  if (args.length === 0) {
+    return {
+      success: false,
+      message: 'Usage: delete project | delete feature [id] | delete task [feature.task]',
+    };
+  }
+
+  if (args[0] === 'project') {
+    return deleteProject(args.slice(1), context);
+  }
+
+  if (args[0] === 'feature') {
+    return deleteFeature(args.slice(1), context);
+  }
+
+  if (args[0] === 'task') {
+    return deleteTask(args.slice(1), context);
+  }
+
+  return {
+    success: false,
+    message: 'Usage: delete project | delete feature [id] | delete task [feature.task]',
   };
 }
 
@@ -89,10 +119,13 @@ PROJECT MANAGEMENT:
   new project [name]        Create a new project
   switch [project]          Switch to a project
   projects                  List all projects
+  delete project            Delete current project (cascades to features & tasks)
 
 FEATURE MANAGEMENT:
   new feature [name]        Create a feature in current project
   features                  List all features in current project
+  delete feature [id]       Delete a feature and its tasks
+                            Example: delete feature 2
 
 TASK MANAGEMENT:
   add task [desc] [id]      Add a 15min task to a feature
@@ -102,6 +135,8 @@ TASK MANAGEMENT:
   tasks                     List pending tasks (grouped by feature)
   complete [feature.task]   Complete a task
                             Example: complete 1.2
+  delete task [feature.task] Delete a task
+                            Example: delete task 1.2
 
 OTHER:
   stats                     View statistics

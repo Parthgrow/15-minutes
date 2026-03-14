@@ -3,6 +3,7 @@ export interface Project {
   name: string;
   createdAt: number;
   tasksCompleted: number;
+  totalMinutes: number;
 }
 
 export interface Feature {

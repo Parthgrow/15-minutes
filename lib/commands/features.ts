@@ -59,6 +59,53 @@ export async function newFeature(
   };
 }
 
+// delete feature [id] - Delete a feature by list index and cascade delete its tasks
+export async function deleteFeature(
+  args: string[],
+  context?: CommandContext
+): Promise<CommandResult> {
+  if (!context?.currentProjectId) {
+    return {
+      success: false,
+      message: 'No active project. Switch to a project first.',
+    };
+  }
+
+  const featureIdNum = parseInt(args[0]);
+  if (isNaN(featureIdNum) || featureIdNum < 1) {
+    return {
+      success: false,
+      message: 'Usage: delete feature [id]\nExample: delete feature 2',
+    };
+  }
+
+  const featuresRes = await fetch(
+    `/api/features?projectId=${context.currentProjectId}`
+  );
+  const features: Feature[] = await featuresRes.json();
+  const feature = features[featureIdNum - 1];
+
+  if (!feature) {
+    return {
+      success: false,
+      message: `Feature #${featureIdNum} not found. Use 'features' to see available features.`,
+    };
+  }
+
+  const res = await fetch(`/api/features/${feature.id}`, { method: 'DELETE' });
+
+  if (!res.ok) {
+    const err = await res.json();
+    return { success: false, message: err.error ?? 'Failed to delete feature' };
+  }
+
+  return {
+    success: true,
+    message: `Feature "${feature.name}" deleted.`,
+    data: { refresh: true },
+  };
+}
+
 // features - List all features in current project
 export async function listFeatures(
   args: string[],
