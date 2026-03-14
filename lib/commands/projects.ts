@@ -62,6 +62,34 @@ export async function switchProject(
   };
 }
 
+// delete project - Delete the current project and all its features/tasks
+export async function deleteProject(
+  args: string[],
+  context?: CommandContext
+): Promise<CommandResult> {
+  if (!context?.currentProjectId) {
+    return {
+      success: false,
+      message: 'No active project. Switch to a project first.',
+    };
+  }
+
+  const res = await fetch(`/api/projects/${context.currentProjectId}`, {
+    method: 'DELETE',
+  });
+
+  if (!res.ok) {
+    const err = await res.json();
+    return { success: false, message: err.error ?? 'Failed to delete project' };
+  }
+
+  return {
+    success: true,
+    message: 'Project deleted.',
+    data: { deletedProjectId: context.currentProjectId },
+  };
+}
+
 // projects - List all projects
 export async function listProjects(
   args: string[],

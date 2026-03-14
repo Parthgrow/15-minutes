@@ -145,6 +145,77 @@ export async function listTasks(
   };
 }
 
+// delete task [feature.task] - Delete a task
+export async function deleteTask(
+  args: string[],
+  context?: CommandContext
+): Promise<CommandResult> {
+  if (!context?.currentProjectId) {
+    return { success: false, message: 'No active project.' };
+  }
+
+  const taskIdentifier = args[0];
+  if (!taskIdentifier) {
+    return {
+      success: false,
+      message: 'Usage: delete task [feature.task] (e.g., delete task 1.2)',
+    };
+  }
+
+  const parts = taskIdentifier.split('.');
+  if (parts.length !== 2) {
+    return {
+      success: false,
+      message: 'Usage: delete task [feature.task] (e.g., delete task 1.2)',
+    };
+  }
+
+  const featureNum = parseInt(parts[0]);
+  const taskNum = parseInt(parts[1]);
+
+  if (isNaN(featureNum) || isNaN(taskNum) || featureNum < 1 || taskNum < 1) {
+    return {
+      success: false,
+      message: 'Invalid task number. Use format: feature.task (e.g., 1.2)',
+    };
+  }
+
+  const featuresRes = await fetch(
+    `/api/features?projectId=${context.currentProjectId}`
+  );
+  const features: Feature[] = await featuresRes.json();
+  const feature = features[featureNum - 1];
+
+  if (!feature) {
+    return { success: false, message: `Feature #${featureNum} not found` };
+  }
+
+  const tasksRes = await fetch(`/api/tasks?featureId=${feature.id}`);
+  const tasks: Task[] = await tasksRes.json();
+
+  if (taskNum > tasks.length) {
+    return {
+      success: false,
+      message: `Task ${featureNum}.${taskNum} not found`,
+    };
+  }
+
+  const task = tasks[taskNum - 1];
+
+  const res = await fetch(`/api/tasks/${task.id}`, { method: 'DELETE' });
+
+  if (!res.ok) {
+    const err = await res.json();
+    return { success: false, message: err.error ?? 'Failed to delete task' };
+  }
+
+  return {
+    success: true,
+    message: `Task deleted: ${task.description}`,
+    data: { refresh: true },
+  };
+}
+
 // complete [feature.task] - Complete a task
 export async function completeTask(
   args: string[],

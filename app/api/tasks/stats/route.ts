@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/firebase/config';
-import { AggregateField } from 'firebase-admin/firestore';
 
 // GET /api/tasks/stats - Get task statistics
 // Query params: projectId (optional)
@@ -15,16 +14,20 @@ export async function GET(request: NextRequest) {
   try {
     const projectId = request.nextUrl.searchParams.get('projectId');
 
-    // If projectId filter is requested, query tasks directly
+    // Project-specific stats — read cached fields from project document
     if (projectId) {
-      const completedSnapshot = await db
-        .collection('tasks')
-        .where('userId', '==', session.user.id)
-        .where('projectId', '==', projectId)
-        .where('completedAt', '!=', null)
-        .count()
-        .get();
+      const projectDoc = await db.collection('projects').doc(projectId).get();
 
+      if (!projectDoc.exists || projectDoc.data()?.userId !== session.user.id) {
+        return NextResponse.json({ error: 'Project not found' }, { status: 404 });
+      }
+
+      const project = projectDoc.data()!;
+      const completedCount = project.tasksCompleted || 0;
+      const totalMinutes = project.totalMinutes || 0;
+
+      // Pending count is still queried live — it's a count (cheap) and
+      // not worth caching separately for now
       const pendingSnapshot = await db
         .collection('tasks')
         .where('userId', '==', session.user.id)
@@ -33,17 +36,6 @@ export async function GET(request: NextRequest) {
         .count()
         .get();
 
-      // Sum duration of completed tasks server-side
-      const minutesSnapshot = await db
-        .collection('tasks')
-        .where('userId', '==', session.user.id)
-        .where('projectId', '==', projectId)
-        .where('completedAt', '!=', null)
-        .aggregate({ totalMinutes: AggregateField.sum('duration') })
-        .get();
-
-      const totalMinutes = minutesSnapshot.data().totalMinutes;
-      const completedCount = completedSnapshot.data().count;
       const pendingCount = pendingSnapshot.data().count;
 
       return NextResponse.json({
@@ -54,7 +46,7 @@ export async function GET(request: NextRequest) {
       });
     }
 
-    // No filter - read from user's stats object (fast!) + query for totalMinutes
+    // Global stats — read fully from cached user stats object
     const userDoc = await db.doc(`users/${session.user.id}`).get();
 
     if (!userDoc.exists || !userDoc.data()?.stats) {
@@ -69,16 +61,7 @@ export async function GET(request: NextRequest) {
     const stats = userDoc.data()!.stats;
     const completedCount = stats.totalCompleted || 0;
     const pendingCount = stats.totalPending || 0;
-
-    // Sum duration of all completed tasks server-side
-    const minutesSnapshot = await db
-      .collection('tasks')
-      .where('userId', '==', session.user.id)
-      .where('completedAt', '!=', null)
-      .aggregate({ totalMinutes: AggregateField.sum('duration') })
-      .get();
-
-    const totalMinutes = minutesSnapshot.data().totalMinutes;
+    const totalMinutes = stats.totalMinutes || 0;
 
     return NextResponse.json({
       completedCount,

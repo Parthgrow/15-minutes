@@ -7,7 +7,6 @@ import {
   incrementCompletedStats,
   decrementCompletedStats,
   decrementPendingStats,
-  decrementCompletedStatsOnDelete,
   toDateString,
 } from '@/lib/firebase/stats';
 
@@ -64,6 +63,7 @@ export async function PATCH(
 
     const task = taskDoc.data()!;
     const userId = task.userId || session.user.id;
+    const duration: number = task.duration ?? 15;
 
     const wasCompleted = task.completedAt !== null;
     const isNowCompleted = completed === true;
@@ -73,11 +73,10 @@ export async function PATCH(
       const completedAt = Date.now();
       const completedDate = toDateString(completedAt);
 
-      // Update task with completion info
       await taskRef.update({ completedAt, completedDate });
 
-      // Update user stats (summary + daily aggregation)
-      await incrementCompletedStats(userId, completedDate);
+      // Increment root-level stats (totalCompleted, totalMinutes, dailyStats)
+      await incrementCompletedStats(userId, completedDate, duration);
 
       // Increment feature's tasksCompleted
       const featureRef = db.collection('features').doc(task.featureId);
@@ -85,28 +84,27 @@ export async function PATCH(
         tasksCompleted: FieldValue.increment(1),
       });
 
-      // Get the feature to find the projectId, then increment project's tasksCompleted
+      // Increment project's tasksCompleted + totalMinutes
       const featureDoc = await featureRef.get();
       if (featureDoc.exists) {
         const feature = featureDoc.data()!;
-        const projectRef = db.collection('projects').doc(feature.projectId);
-        await projectRef.update({
+        await db.collection('projects').doc(feature.projectId).update({
           tasksCompleted: FieldValue.increment(1),
+          totalMinutes: FieldValue.increment(duration),
         });
       }
 
       return NextResponse.json({ ...task, completedAt, completedDate });
     }
 
-    // Task is being uncompleted
+    // Task is being uncompleted (user reversing their action)
     if (wasCompleted && !isNowCompleted) {
       const previousDate = task.completedDate || toDateString(task.completedAt);
 
-      // Update task to remove completion
       await taskRef.update({ completedAt: null, completedDate: null });
 
-      // Update user stats
-      await decrementCompletedStats(userId, previousDate);
+      // Decrement root-level stats (totalCompleted, totalMinutes, dailyStats)
+      await decrementCompletedStats(userId, previousDate, duration);
 
       // Decrement feature's tasksCompleted
       const featureRef = db.collection('features').doc(task.featureId);
@@ -114,13 +112,13 @@ export async function PATCH(
         tasksCompleted: FieldValue.increment(-1),
       });
 
-      // Decrement project's tasksCompleted
+      // Decrement project's tasksCompleted + totalMinutes
       const featureDoc = await featureRef.get();
       if (featureDoc.exists) {
         const feature = featureDoc.data()!;
-        const projectRef = db.collection('projects').doc(feature.projectId);
-        await projectRef.update({
+        await db.collection('projects').doc(feature.projectId).update({
           tasksCompleted: FieldValue.increment(-1),
+          totalMinutes: FieldValue.increment(-duration),
         });
       }
 
@@ -162,13 +160,8 @@ export async function DELETE(
 
     await taskRef.delete();
 
-    // Update stats based on task state
-    if (task.completedAt !== null) {
-      // Was completed - decrement completed count and daily aggregation
-      const completedDate = task.completedDate || toDateString(task.completedAt);
-      await decrementCompletedStatsOnDelete(userId, completedDate);
-    } else {
-      // Was pending - decrement pending count
+    // Only decrement pending count — completed task stats are a permanent ledger
+    if (!task.completedAt) {
       await decrementPendingStats(userId);
     }
 
