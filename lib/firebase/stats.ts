@@ -82,6 +82,7 @@ export async function incrementCompletedStats(
       userId,
       date: completedDate,
       count: FieldValue.increment(1),
+      minutes: FieldValue.increment(duration),
       updatedAt: Date.now(),
     },
     { merge: true }
@@ -121,6 +122,7 @@ export async function decrementCompletedStats(
     dailyRef,
     {
       count: FieldValue.increment(-1),
+      minutes: FieldValue.increment(-duration),
       updatedAt: Date.now(),
     },
     { merge: true }
