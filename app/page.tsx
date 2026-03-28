@@ -8,11 +8,10 @@ import ChatInterface from "@/components/ChatInterface";
 import JellyBeanJar from "@/components/JellyBeanJar";
 import TaskList from "@/components/TaskList";
 import CompletionAnimation from "@/components/CompletionAnimation";
+import { useProject } from "@/contexts/ProjectContext";
 
 export default function Home() {
-  const [currentProjectId, setCurrentProjectId] = useState<
-    string | undefined
-  >();
+  const { currentProjectId, setCurrentProjectId } = useProject();
   const [showCelebration, setShowCelebration] = useState(false);
   const [refreshKey, setRefreshKey] = useState(0); // Triggers TaskList refetch
   const [completedCount, setCompletedCount] = useState(0);
