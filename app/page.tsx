@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { signOut, useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import ChatInterface from "@/components/ChatInterface";
 import JellyBeanJar from "@/components/JellyBeanJar";
 import TaskList from "@/components/TaskList";
@@ -66,6 +67,12 @@ export default function Home() {
               {session.user.email}
             </div>
           )}
+          <Link
+            href="/stats"
+            className="text-gray-400 hover:text-green-400 font-mono text-sm px-3 py-1 border border-gray-700 hover:border-green-500 rounded transition-colors"
+          >
+            Stats
+          </Link>
           <button
             onClick={handleLogout}
             className="text-gray-400 hover:text-green-400 font-mono text-sm px-3 py-1 border border-gray-700 hover:border-green-500 rounded transition-colors"
