@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "15 Minutes",
-  description: "Build in focused 15-minute blocks",
+  description: "Build something every day, even if it's 15 minutes",
 };
 
 export const viewport: Viewport = {

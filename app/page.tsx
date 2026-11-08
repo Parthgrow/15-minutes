@@ -9,6 +9,7 @@ import TaskPanel from "@/components/focus/TaskPanel";
 import ProjectList from "@/components/focus/ProjectList";
 import Sheet from "@/components/focus/Sheet";
 import CompletionAnimation from "@/components/CompletionAnimation";
+import Logo from "@/components/Logo";
 import { useProject } from "@/contexts/ProjectContext";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { formatClock, useFocusTimer } from "@/hooks/useFocusTimer";
@@ -173,15 +174,18 @@ export default function Home() {
       <div className="flex-1 flex flex-col min-h-dvh lg:min-h-0 lg:h-dvh">
         {/* Header */}
         <header className="flex items-center justify-between gap-3 px-5 pt-[max(1rem,env(safe-area-inset-top))] pb-2">
-          <button
-            onClick={() => setProjectsOpen(true)}
-            className="flex items-center gap-1.5 min-w-0 py-2 text-sm text-muted hover:text-ink transition-colors"
-          >
-            <span className="truncate">{currentProject?.name ?? (ws.projects ? "New project" : "…")}</span>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-              <path d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
+          <div className="flex items-center gap-3 min-w-0">
+            <Logo size={20} className="shrink-0 text-ink" />
+            <button
+              onClick={() => setProjectsOpen(true)}
+              className="flex items-center gap-1.5 min-w-0 py-2 text-sm text-muted hover:text-ink transition-colors"
+            >
+              <span className="truncate">{currentProject?.name ?? (ws.projects ? "New project" : "…")}</span>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+                <path d="m6 9 6 6 6-6" />
+              </svg>
+            </button>
+          </div>
 
           <div className="flex items-center gap-1">
             <Link
