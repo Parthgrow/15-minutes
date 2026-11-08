@@ -1,6 +1,7 @@
 "use client";
 
 import { signIn, useSession } from "next-auth/react";
+import Logo from "@/components/Logo";
 
 export default function LoginPage() {
   const { status } = useSession();
@@ -20,11 +21,10 @@ export default function LoginPage() {
   return (
     <div className="min-h-dvh bg-bg flex items-center justify-center p-5">
       <div className="max-w-sm w-full flex flex-col items-center">
-        <div className="text-center mb-12">
-          <h1 className="text-7xl font-light tabular tracking-tight text-ink mb-4">
-            15:00
-          </h1>
-          <p className="text-muted">Build something in the next 15 minutes.</p>
+        <div className="flex flex-col items-center text-center mb-12">
+          <Logo size={72} className="text-ink mb-6" />
+          <h1 className="text-3xl font-light tracking-tight text-ink mb-3">15 Minutes</h1>
+          <p className="text-muted text-balance">Build something every day, even if it&apos;s 15 minutes.</p>
         </div>
 
         <button
