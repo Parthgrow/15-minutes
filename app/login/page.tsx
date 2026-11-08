@@ -11,25 +11,25 @@ export default function LoginPage() {
 
   if (status === "loading") {
     return (
-      <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center">
-        <div className="text-green-400 font-mono">Loading...</div>
+      <div className="min-h-dvh bg-bg flex items-center justify-center">
+        <div className="text-muted">Loading…</div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] flex items-center justify-center p-4">
-      <div className="max-w-md w-full border border-gray-800 rounded-lg p-8 bg-[#111111]">
-        <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-green-400 font-mono mb-2">
-            15 MINUTES
+    <div className="min-h-dvh bg-bg flex items-center justify-center p-5">
+      <div className="max-w-sm w-full flex flex-col items-center">
+        <div className="text-center mb-12">
+          <h1 className="text-7xl font-light tabular tracking-tight text-ink mb-4">
+            15:00
           </h1>
-          <p className="text-gray-500 font-mono text-sm">Sign in to continue</p>
+          <p className="text-muted">Build something in the next 15 minutes.</p>
         </div>
 
         <button
           onClick={handleGoogleSignIn}
-          className="w-full bg-white hover:bg-gray-100 text-gray-900 font-mono font-semibold py-3 px-4 rounded-lg transition-colors flex items-center justify-center gap-3"
+          className="w-full bg-ink hover:opacity-90 text-bg font-medium h-12 px-4 rounded-full transition-colors flex items-center justify-center gap-3"
         >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path

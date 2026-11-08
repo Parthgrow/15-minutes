@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { minutesToTasks } from "@/lib/utils";
+import JellyBeanJar from "@/components/JellyBeanJar";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -44,14 +45,14 @@ function BarChart({
             {/* Tooltip on hover */}
             <div className="relative flex flex-col items-center w-full">
               {value > 0 && (
-                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-gray-800 text-white text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                <div className="absolute -top-6 left-1/2 -translate-x-1/2 bg-surface border border-line text-ink text-xs px-1.5 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
                   {value}
                 </div>
               )}
               <div className="w-full flex items-end justify-center h-32">
                 <div
                   className={`w-full rounded-t transition-all duration-500 ${
-                    isToday ? "bg-green-400" : value > 0 ? "bg-green-600" : "bg-gray-800"
+                    isToday ? "bg-accent" : value > 0 ? "bg-ink/70" : "bg-line"
                   }`}
                   style={{ height: `${Math.max(heightPct, value > 0 ? 4 : 2)}%` }}
                 />
@@ -59,7 +60,7 @@ function BarChart({
             </div>
             <div
               className={`text-xs truncate w-full text-center ${
-                isToday ? "text-green-400" : "text-gray-600"
+                isToday ? "text-accent" : "text-faint"
               }`}
             >
               {entry.label}
@@ -81,10 +82,10 @@ function StatCard({
   sub?: string;
 }) {
   return (
-    <div className="bg-[#111111] border border-gray-800 rounded-xl p-5 flex flex-col gap-1">
-      <div className="text-gray-500 text-sm">{label}</div>
-      <div className="text-3xl font-bold text-white">{value}</div>
-      {sub && <div className="text-gray-600 text-xs">{sub}</div>}
+    <div className="border border-line rounded-2xl p-5 flex flex-col gap-1">
+      <div className="text-muted text-sm">{label}</div>
+      <div className="text-2xl sm:text-3xl font-light tabular text-ink whitespace-nowrap">{value}</div>
+      {sub && <div className="text-faint text-xs">{sub}</div>}
     </div>
   );
 }
@@ -107,21 +108,21 @@ function ChartCard({
   const total = data.reduce((a, d) => a + d[metric], 0);
 
   return (
-    <div className="bg-[#111111] border border-gray-800 rounded-xl p-6">
+    <div className="border border-line rounded-2xl p-5 sm:p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-white font-semibold text-lg">{title}</h2>
-          <p className="text-gray-500 text-sm mt-0.5">
+          <h2 className="text-ink font-medium">{title}</h2>
+          <p className="text-muted text-sm mt-0.5">
             {total} {metric === "count" ? "tasks" : "minutes"} total
           </p>
         </div>
-        <div className="flex gap-1 bg-gray-900 rounded-lg p-1">
+        <div className="flex gap-1 bg-surface rounded-lg p-1">
           <button
             onClick={() => onMetricChange("count")}
             className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
               metric === "count"
-                ? "bg-gray-700 text-white"
-                : "text-gray-500 hover:text-gray-300"
+                ? "bg-line text-ink"
+                : "text-muted hover:text-ink"
             }`}
           >
             Tasks
@@ -130,8 +131,8 @@ function ChartCard({
             onClick={() => onMetricChange("minutes")}
             className={`text-xs px-3 py-1.5 rounded-md transition-colors ${
               metric === "minutes"
-                ? "bg-gray-700 text-white"
-                : "text-gray-500 hover:text-gray-300"
+                ? "bg-line text-ink"
+                : "text-muted hover:text-ink"
             }`}
           >
             Minutes
@@ -140,7 +141,7 @@ function ChartCard({
       </div>
 
       {loading ? (
-        <div className="h-36 flex items-center justify-center text-gray-700 text-sm">
+        <div className="h-36 flex items-center justify-center text-faint text-sm">
           Loading...
         </div>
       ) : (
@@ -166,11 +167,6 @@ export default function StatsPage() {
     weekly: "count",
     monthly: "count",
   });
-
-  useEffect(() => {
-    document.body.style.overflow = "auto";
-    return () => { document.body.style.overflow = "hidden"; };
-  }, []);
 
   useEffect(() => {
     fetch("/api/tasks/stats")
@@ -209,13 +205,13 @@ export default function StatsPage() {
   const thisWeekEntry = weeklyData[weeklyData.length - 1];
 
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-white">
+    <div className="min-h-dvh bg-bg text-ink">
       {/* Header */}
-      <div className="border-b border-gray-800 px-6 py-4 flex items-center justify-between">
+      <div className="border-b border-line px-5 sm:px-6 pt-[max(1rem,env(safe-area-inset-top))] pb-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
           <Link
             href="/"
-            className="text-gray-500 hover:text-white transition-colors text-sm flex items-center gap-1.5"
+            className="text-muted hover:text-ink transition-colors text-sm flex items-center gap-1.5"
           >
             <svg
               className="w-4 h-4"
@@ -232,15 +228,20 @@ export default function StatsPage() {
             </svg>
             Back
           </Link>
-          <div className="w-px h-4 bg-gray-800" />
-          <h1 className="text-white font-semibold">Stats</h1>
-        </div>
-        <div className="text-green-400 font-mono font-bold text-sm">
-          15 MINUTES
+          <div className="w-px h-4 bg-line" />
+          <h1 className="text-ink font-medium">Stats</h1>
         </div>
       </div>
 
-      <div className="max-w-5xl mx-auto px-6 py-8 flex flex-col gap-8">
+      <div className="max-w-5xl mx-auto px-5 sm:px-6 py-8 flex flex-col gap-8">
+        {/* Jar */}
+        <div className="flex justify-center">
+          <JellyBeanJar
+            completedCount={globalStats?.completedCount ?? 0}
+            totalMinutes={globalStats?.totalMinutes ?? 0}
+          />
+        </div>
+
         {/* Summary cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <StatCard

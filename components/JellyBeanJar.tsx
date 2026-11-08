@@ -197,7 +197,7 @@ export default function JellyBeanJar({ completedCount, totalMinutes }: JellyBean
         <AnimatePresence>
           {showNew && (
             <motion.div
-              className="absolute -top-4 -right-4 bg-green-500 text-black px-3 py-1 rounded-full text-xs font-mono font-bold"
+              className="absolute -top-4 -right-4 bg-accent text-bg px-3 py-1 rounded-full text-xs font-mono font-bold"
               initial={{ scale: 0, rotate: -12 }}
               animate={{ scale: 1, rotate: 0 }}
               exit={{ scale: 0, opacity: 0 }}
@@ -210,14 +210,14 @@ export default function JellyBeanJar({ completedCount, totalMinutes }: JellyBean
       </div>
 
       {/* Counter */}
-      <div className="mt-4 text-center font-mono">
-        <div className="text-3xl font-bold text-green-400">
+      <div className="mt-4 text-center">
+        <div className="text-3xl font-light tabular text-ink">
           {beanCount}
         </div>
-        <div className="text-sm text-gray-500 mt-1">
+        <div className="text-sm text-muted mt-1">
           {beanCount === 1 ? "jelly bean" : "jelly beans"}
         </div>
-        <div className="text-xs text-gray-600 mt-1">
+        <div className="text-xs text-faint mt-1">
           {totalMinutes} minutes focused
         </div>
       </div>
