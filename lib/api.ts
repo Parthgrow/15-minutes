@@ -58,7 +58,7 @@ export const api = {
   deleteTask: (id: string) => request<unknown>(`/api/tasks/${id}`, { method: 'DELETE' }),
 
   stats: () => request<Stats>('/api/tasks/stats'),
-  timeline: (period: 'daily' | 'weekly' | 'monthly') =>
+  timeline: (period: 'daily' | 'weekly' | 'monthly' | 'yearly') =>
     request<{ period: string; data: TimelineEntry[] }>(
       `/api/tasks/stats/timeline?period=${period}`
     ),

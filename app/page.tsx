@@ -13,6 +13,7 @@ import { useProject } from "@/contexts/ProjectContext";
 import { useWorkspace } from "@/hooks/useWorkspace";
 import { formatClock, useFocusTimer } from "@/hooks/useFocusTimer";
 import { api } from "@/lib/api";
+import { computeStreak } from "@/lib/streak";
 import { Project, Task } from "@/lib/types";
 
 const selectedKey = (projectId: string) => `currentTask:${projectId}`;
@@ -29,18 +30,19 @@ export default function Home() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [celebrate, setCelebrate] = useState(false);
   const [undo, setUndo] = useState<Task | null>(null);
-  const [beans, setBeans] = useState<number | null>(null);
+  const [streak, setStreak] = useState<number | null>(null);
   const [today, setToday] = useState<{ count: number; minutes: number } | null>(null);
   const [statsKey, setStatsKey] = useState(0);
 
   // Stats are computed server-side; refetch after anything that changes them
   useEffect(() => {
-    api.stats().then((s) => setBeans(Math.floor((s.totalMinutes ?? 0) / 15))).catch(() => {});
     api
-      .timeline("daily")
+      .timeline("yearly")
       .then((t) => {
-        const last = t.data?.[t.data.length - 1];
+        const days = t.data ?? [];
+        const last = days[days.length - 1];
         setToday({ count: last?.count ?? 0, minutes: last?.minutes ?? 0 });
+        setStreak(computeStreak(days).current);
       })
       .catch(() => {});
   }, [statsKey]);
@@ -185,10 +187,10 @@ export default function Home() {
             <Link
               href="/stats"
               className="flex items-center gap-1.5 px-3 py-2 rounded-full text-sm text-muted hover:text-ink transition-colors"
-              title="Jelly beans earned"
+              title="Day streak"
             >
-              <span className="w-2 h-2 rounded-full bg-accent" aria-hidden />
-              <span className="tabular">{beans ?? "–"}</span>
+              <FlameIcon active={!!streak} />
+              <span className="tabular">{streak ?? "–"}</span>
             </Link>
             <div className="relative">
               <button
@@ -376,5 +378,23 @@ function Toast({ children }: { children: React.ReactNode }) {
     >
       {children}
     </motion.div>
+  );
+}
+
+function FlameIcon({ active }: { active: boolean }) {
+  return (
+    <svg
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill={active ? "currentColor" : "none"}
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinejoin="round"
+      className={active ? "text-accent" : "text-faint"}
+      aria-hidden
+    >
+      <path d="M12 2c1 3.5 5 6 5 11a5 5 0 0 1-10 0c0-2.5 1.5-4 2.5-5 .3 2 1.5 3 2.5 3 0-3-1-6 0-9Z" />
+    </svg>
   );
 }
