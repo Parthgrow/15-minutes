@@ -1,23 +1,28 @@
-import type { Metadata } from "next";
-import { IBM_Plex_Mono, VT323 } from "next/font/google";
+import type { Metadata, Viewport } from "next";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import Providers from "@/components/Providers";
 
-const ibmPlexMono = IBM_Plex_Mono({
-  weight: ['400', '500', '700'],
-  variable: "--font-ibm-plex-mono",
+const geistSans = Geist({
+  variable: "--font-geist-sans",
   subsets: ["latin"],
 });
 
-const vt323 = VT323({
-  weight: '400',
-  variable: "--font-vt323",
+const geistMono = Geist_Mono({
+  variable: "--font-geist-mono",
   subsets: ["latin"],
 });
 
 export const metadata: Metadata = {
-  title: "15 Minutes - Build Great Things",
-  description: "A productivity tool for tracking work in focused 15-minute increments",
+  title: "15 Minutes",
+  description: "Build in focused 15-minute blocks",
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0b0b0c",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -27,9 +32,7 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <body
-        className={`${ibmPlexMono.variable} ${vt323.variable} antialiased`}
-      >
+      <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
         <Providers>{children}</Providers>
       </body>
     </html>

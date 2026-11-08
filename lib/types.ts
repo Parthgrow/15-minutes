@@ -40,9 +40,3 @@ export interface SharedTask {
   sharedWith: string;
   sharedAt: number;
 }
-
-export interface CommandResult {
-  success: boolean;
-  message: string;
-  data?: any;
-}

@@ -1,63 +1,71 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #0a0a0a;
-  --color-foreground: #10b981;
-  --font-sans: var(--font-ibm-plex-mono);
-  --font-mono: var(--font-ibm-plex-mono);
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-line: var(--line);
+  --color-ink: var(--ink);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
 }
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #10b981;
-  --terminal-green: #10b981;
-  --terminal-dark: #0a0a0a;
-  --terminal-gray: #1f2937;
+  --bg: #0b0b0c;
+  --surface: #141416;
+  --line: #232327;
+  --ink: #ededed;
+  --muted: #8a8a90;
+  --faint: #4a4a50;
+  /* The accent only shows while a block is running */
+  --accent: #f5a524;
+}
+
+html,
+body {
+  background: var(--bg);
+  color: var(--ink);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: var(--font-ibm-plex-mono), 'Courier New', monospace;
-  overflow: hidden;
+  font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-tap-highlight-color: transparent;
 }
 
-/* Custom scrollbar for terminal look */
+::selection {
+  background: var(--ink);
+  color: var(--bg);
+}
+
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 6px;
+  height: 6px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--terminal-dark);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--terminal-gray);
-  border-radius: 4px;
+  background: var(--line);
+  border-radius: 3px;
 }
 
-::-webkit-scrollbar-thumb:hover {
-  background: #374151;
-}
-
-/* Terminal text selection */
-::selection {
-  background: var(--terminal-green);
-  color: var(--terminal-dark);
-}
-
-/* Disable default input styles */
 input:focus {
   outline: none;
 }
 
-/* Cursor blink animation */
-@keyframes blink {
-  0%, 50% { opacity: 1; }
-  51%, 100% { opacity: 0; }
+.tabular {
+  font-variant-numeric: tabular-nums;
 }
 
-.cursor-blink {
-  animation: blink 1s step-end infinite;
+@keyframes soft-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.55; }
+}
+
+.soft-pulse {
+  animation: soft-pulse 2s ease-in-out infinite;
 }

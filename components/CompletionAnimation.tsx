@@ -41,23 +41,16 @@ export default function CompletionAnimation({ show, onComplete }: CompletionAnim
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
         >
+          <div className="absolute inset-0 bg-bg/85 backdrop-blur-sm" />
+
           {/* Main celebration text */}
           <motion.div
-            className="text-6xl font-bold font-mono"
-            initial={{ scale: 0, rotate: -180 }}
-            animate={{
-              scale: [0, 1.2, 1],
-              rotate: [0, 10, -10, 0]
-            }}
-            transition={{
-              duration: 0.6,
-              times: [0, 0.6, 1],
-              ease: 'easeOut'
-            }}
+            className="relative text-5xl sm:text-6xl font-light tracking-tight text-ink"
+            initial={{ scale: 0.6, opacity: 0 }}
+            animate={{ scale: [0.6, 1.08, 1], opacity: 1 }}
+            transition={{ duration: 0.5, times: [0, 0.6, 1], ease: 'easeOut' }}
           >
-            <span className="text-green-400">🎉</span>
-            <span className="text-green-400 ml-4">DONE!</span>
-            <span className="text-green-400 ml-4">🎉</span>
+            Shipped.
           </motion.div>
 
           {/* Particles */}
@@ -87,7 +80,7 @@ export default function CompletionAnimation({ show, onComplete }: CompletionAnim
 
           {/* Ripple effect */}
           <motion.div
-            className="absolute border-4 border-green-400 rounded-full"
+            className="absolute border-2 border-accent rounded-full"
             initial={{ width: 0, height: 0, opacity: 0.8 }}
             animate={{
               width: 300,
@@ -99,7 +92,7 @@ export default function CompletionAnimation({ show, onComplete }: CompletionAnim
 
           {/* Secondary ripple */}
           <motion.div
-            className="absolute border-4 border-green-500 rounded-full"
+            className="absolute border border-accent/60 rounded-full"
             initial={{ width: 0, height: 0, opacity: 0.6 }}
             animate={{
               width: 400,
@@ -111,12 +104,12 @@ export default function CompletionAnimation({ show, onComplete }: CompletionAnim
 
           {/* Jelly bean message */}
           <motion.div
-            className="absolute bottom-1/3 text-2xl font-mono text-green-400 font-bold"
+            className="absolute bottom-1/3 text-lg text-muted"
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
           >
-            +1 Jelly Bean!
+            +1 jelly bean
           </motion.div>
         </motion.div>
       )}

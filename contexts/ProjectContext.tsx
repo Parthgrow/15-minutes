@@ -10,12 +10,14 @@ interface ProjectContextValue {
 const ProjectContext = createContext<ProjectContextValue | null>(null);
 
 export function ProjectProvider({ children }: { children: React.ReactNode }) {
-  const [currentProjectId, setCurrentProjectIdState] = useState<string | undefined>(
-    () => {
-      if (typeof window === 'undefined') return undefined;
-      return localStorage.getItem('lastProjectId') ?? undefined;
-    }
-  );
+  const [currentProjectId, setCurrentProjectIdState] = useState<string | undefined>(undefined);
+
+  // Restore after mount so the server and client render the same first frame
+  useEffect(() => {
+    const stored = localStorage.getItem('lastProjectId');
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time restore from localStorage
+    if (stored) setCurrentProjectIdState(stored);
+  }, []);
 
   useEffect(() => {
     if (currentProjectId) {
