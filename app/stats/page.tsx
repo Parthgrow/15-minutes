@@ -3,7 +3,8 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { minutesToTasks } from "@/lib/utils";
-import JellyBeanJar from "@/components/JellyBeanJar";
+import ContributionGraph from "@/components/ContributionGraph";
+import { computeStreak } from "@/lib/streak";
 
 type Period = "daily" | "weekly" | "monthly";
 
@@ -76,15 +77,17 @@ function StatCard({
   label,
   value,
   sub,
+  highlight = false,
 }: {
   label: string;
   value: string | number;
   sub?: string;
+  highlight?: boolean;
 }) {
   return (
     <div className="border border-line rounded-2xl p-5 flex flex-col gap-1">
       <div className="text-muted text-sm">{label}</div>
-      <div className="text-2xl sm:text-3xl font-light tabular text-ink whitespace-nowrap">{value}</div>
+      <div className={`text-2xl sm:text-3xl font-light tabular whitespace-nowrap ${highlight ? "text-accent" : "text-ink"}`}>{value}</div>
       {sub && <div className="text-faint text-xs">{sub}</div>}
     </div>
   );
@@ -156,7 +159,9 @@ export default function StatsPage() {
   const [dailyData, setDailyData] = useState<StatEntry[]>([]);
   const [weeklyData, setWeeklyData] = useState<StatEntry[]>([]);
   const [monthlyData, setMonthlyData] = useState<StatEntry[]>([]);
+  const [yearData, setYearData] = useState<StatEntry[]>([]);
   const [loading, setLoading] = useState({
+    yearly: true,
     global: true,
     daily: true,
     weekly: true,
@@ -176,19 +181,23 @@ export default function StatsPage() {
         setLoading((l) => ({ ...l, global: false }));
       });
 
-    const fetchPeriod = async (period: Period) => {
+    const fetchPeriod = async (period: Period | "yearly") => {
       const res = await fetch(`/api/tasks/stats/timeline?period=${period}`);
       const json = await res.json();
       if (period === "daily") setDailyData(json.data?.slice(-7) ?? []);
       if (period === "weekly") setWeeklyData(json.data ?? []);
       if (period === "monthly") setMonthlyData(json.data ?? []);
+      if (period === "yearly") setYearData(json.data ?? []);
       setLoading((l) => ({ ...l, [period]: false }));
     };
 
     fetchPeriod("daily");
     fetchPeriod("weekly");
     fetchPeriod("monthly");
+    fetchPeriod("yearly");
   }, []);
+
+  const streak = computeStreak(yearData);
 
   const hours = globalStats
     ? Math.floor(globalStats.totalMinutes / 60)
@@ -234,16 +243,30 @@ export default function StatsPage() {
       </div>
 
       <div className="max-w-5xl mx-auto px-5 sm:px-6 py-8 flex flex-col gap-8">
-        {/* Jar */}
-        <div className="flex justify-center">
-          <JellyBeanJar
-            completedCount={globalStats?.completedCount ?? 0}
-            totalMinutes={globalStats?.totalMinutes ?? 0}
-          />
+        {/* Contribution graph */}
+        <div className="border border-line rounded-2xl p-5 sm:p-6">
+          {loading.yearly ? (
+            <div className="h-36 flex items-center justify-center text-faint text-sm">
+              Loading...
+            </div>
+          ) : (
+            <ContributionGraph days={yearData} />
+          )}
         </div>
 
         {/* Summary cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <StatCard
+            label="Current streak"
+            value={loading.yearly ? "—" : `${streak.current} ${streak.current === 1 ? "day" : "days"}`}
+            sub={streak.current > 0 ? "keep it going" : "start one today"}
+            highlight={streak.current > 0}
+          />
+          <StatCard
+            label="Longest streak"
+            value={loading.yearly ? "—" : `${streak.longest} ${streak.longest === 1 ? "day" : "days"}`}
+            sub="last 12 months"
+          />
           <StatCard
             label="Total tasks done"
             value={loading.global ? "—" : minutesToTasks(globalStats?.totalMinutes ?? 0)}

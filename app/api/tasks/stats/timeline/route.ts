@@ -4,7 +4,10 @@ import { authOptions } from '@/app/api/auth/[...nextauth]/route';
 import { db } from '@/lib/firebase/config';
 import { minutesToTasks } from '@/lib/utils';
 
-type Period = 'daily' | 'weekly' | 'monthly';
+type Period = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+// One entry per day for 53 weeks, enough to fill a contribution graph
+const YEARLY_DAYS = 371;
 
 function toDateStr(date: Date): string {
   return date.toISOString().split('T')[0];
@@ -13,6 +16,7 @@ function toDateStr(date: Date): string {
 function getStartDate(period: Period): string {
   const d = new Date();
   if (period === 'daily') d.setDate(d.getDate() - 29);
+  else if (period === 'yearly') d.setDate(d.getDate() - (YEARLY_DAYS - 1));
   else if (period === 'weekly') d.setDate(d.getDate() - 83);
   else d.setFullYear(d.getFullYear() - 1);
   return toDateStr(d);
@@ -27,7 +31,7 @@ function getWeekStart(dateStr: string): string {
   return toDateStr(d);
 }
 
-// GET /api/tasks/stats/timeline?period=daily|weekly|monthly
+// GET /api/tasks/stats/timeline?period=daily|weekly|monthly|yearly
 export async function GET(request: NextRequest) {
   const session = await getServerSession(authOptions);
   if (!session?.user?.id) {
@@ -51,10 +55,11 @@ export async function GET(request: NextRequest) {
       minutes: (doc.data().minutes as number) || 0,
     }));
 
-    if (period === 'daily') {
+    if (period === 'daily' || period === 'yearly') {
+      const days = period === 'daily' ? 30 : YEARLY_DAYS;
       const today = new Date();
       const result = [];
-      for (let i = 29; i >= 0; i--) {
+      for (let i = days - 1; i >= 0; i--) {
         const d = new Date(today);
         d.setDate(today.getDate() - i);
         const dateStr = toDateStr(d);

@@ -101,16 +101,6 @@ export default function CompletionAnimation({ show, onComplete }: CompletionAnim
             }}
             transition={{ duration: 1.2, ease: 'easeOut', delay: 0.1 }}
           />
-
-          {/* Jelly bean message */}
-          <motion.div
-            className="absolute bottom-1/3 text-lg text-muted"
-            initial={{ y: 50, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            transition={{ delay: 0.3, duration: 0.5 }}
-          >
-            +1 jelly bean
-          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
