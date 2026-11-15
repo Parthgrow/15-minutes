@@ -20,6 +20,46 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Claude integration (MCP)
+
+The app ships an [MCP](https://modelcontextprotocol.io) server so Claude (Claude Code, claude.ai, and the desktop and mobile apps) can read and manage your projects, features and tasks. Every tool goes through the same data layer as the web app (`lib/data`), so changes show up in the app immediately.
+
+**Tools:** `whoami`, `list_projects`, `create_project`, `delete_project`, `list_features`, `create_feature`, `delete_feature`, `list_tasks` (filter by project, feature, status, search), `get_task`, `add_task`, `update_task` (only the fields you pass change; `completed: true` ticks a task off), `delete_task`, `get_stats` (totals, today, last 7 days, streaks). Deletes require `confirm: true`. Dates are `YYYY-MM-DD` (UTC). Try: *"Add 'write the pricing page' to the Landing feature"* or *"What's my streak?"*
+
+### Local server (Claude Code in this repo)
+
+`scripts/mcp-server.ts` talks to Firestore directly and is registered in `.mcp.json`.
+
+1. Add to `.env` (next to the Firebase Admin variables `FIREBASE_PROJECT_ID`, `FIREBASE_CLIENT_EMAIL`, `FIREBASE_PRIVATE_KEY`):
+   ```
+   FIFTEEN_MINUTES_USER_ID=<your user id, shown on /settings>
+   ```
+2. Run `npm install`, then restart `claude` in this folder and approve the `15-minutes` server (`/mcp` shows its status).
+
+To run it by hand: `npx tsx --env-file=.env scripts/mcp-server.ts`. It exits with a clear message if a variable is missing.
+
+### Remote server (Claude Code on any machine)
+
+The deployed app serves the same tools over Streamable HTTP at `/api/mcp`, authenticated with per-user tokens:
+
+1. Sign in, open **Connect Claude** from the account menu (`/settings`) and click **Generate token**.
+2. Run the command shown there:
+   ```bash
+   claude mcp add --transport http 15-minutes https://<your-app>/api/mcp \
+     --header "Authorization: Bearer <token>"
+   ```
+
+### claude.ai connector (web, desktop and mobile apps)
+
+Custom connectors only take a URL, so `/settings` also shows a connector URL with the token in the path: `https://<your-app>/api/mcp/<token>`. Paste it into claude.ai under *Settings → Connectors → Add custom connector* and leave authentication empty.
+
+### Security
+
+- A token gives full access to your data. Only its SHA-256 hash is stored (`mcpTokens/<hash>` and `users/<id>/mcpTokens/<tokenId>` in Firestore); the token itself is shown once.
+- The connector URL **is** the credential: anyone who has it can use your account until you revoke the token. Use a dedicated token for it.
+- Each user can have up to 10 tokens. Revoking one on `/settings` takes effect immediately.
+- Tools only ever see the token owner's data; the API routes enforce the same ownership checks.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

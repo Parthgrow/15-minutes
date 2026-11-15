@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "15-minutes": {
+      "command": "npx",
+      "args": ["tsx", "--env-file=.env", "scripts/mcp-server.ts"]
+    }
+  }
+}
