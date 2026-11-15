@@ -214,6 +214,9 @@ export default function Home() {
                     <Link href="/stats" className="block px-3 py-2 rounded-lg text-muted hover:text-ink hover:bg-bg">
                       Stats
                     </Link>
+                    <Link href="/settings" className="block px-3 py-2 rounded-lg text-muted hover:text-ink hover:bg-bg">
+                      Connect Claude
+                    </Link>
                     <button
                       onClick={() => signOut({ callbackUrl: "/login", redirect: true })}
                       className="w-full text-left px-3 py-2 rounded-lg text-muted hover:text-ink hover:bg-bg"

@@ -1,0 +1,195 @@
+import { db } from '@/lib/firebase/config';
+import { minutesToTasks } from '@/lib/utils';
+
+export interface Stats {
+  completedCount: number;
+  pendingCount: number;
+  totalCount: number;
+  totalMinutes: number;
+}
+
+export interface TimelineEntry {
+  date: string;
+  label: string;
+  count: number;
+  minutes: number;
+}
+
+// Totals for the user, or for one of their projects (null if not theirs)
+export async function getStats(userId: string, projectId?: string | null): Promise<Stats | null> {
+  // Project-specific stats — read cached fields from project document
+  if (projectId) {
+    const projectDoc = await db.collection('projects').doc(projectId).get();
+
+    if (!projectDoc.exists || projectDoc.data()?.userId !== userId) return null;
+
+    const project = projectDoc.data()!;
+    const completedCount = project.tasksCompleted || 0;
+    const totalMinutes = project.totalMinutes || 0;
+
+    // Pending count is still queried live — it's a count (cheap) and
+    // not worth caching separately for now
+    const pendingSnapshot = await db
+      .collection('tasks')
+      .where('userId', '==', userId)
+      .where('projectId', '==', projectId)
+      .where('completedAt', '==', null)
+      .count()
+      .get();
+
+    const pendingCount = pendingSnapshot.data().count;
+
+    return {
+      completedCount,
+      pendingCount,
+      totalCount: completedCount + pendingCount,
+      totalMinutes,
+    };
+  }
+
+  // Global stats — read fully from cached user stats object
+  const userDoc = await db.doc(`users/${userId}`).get();
+
+  if (!userDoc.exists || !userDoc.data()?.stats) {
+    return {
+      completedCount: 0,
+      pendingCount: 0,
+      totalCount: 0,
+      totalMinutes: 0,
+    };
+  }
+
+  const stats = userDoc.data()!.stats;
+  const completedCount = stats.totalCompleted || 0;
+  const pendingCount = stats.totalPending || 0;
+  const totalMinutes = stats.totalMinutes || 0;
+
+  return {
+    completedCount,
+    pendingCount,
+    totalCount: completedCount + pendingCount,
+    totalMinutes,
+  };
+}
+
+export type Period = 'daily' | 'weekly' | 'monthly' | 'yearly';
+
+// One entry per day for 53 weeks, enough to fill a contribution graph
+const YEARLY_DAYS = 371;
+
+function toDateStr(date: Date): string {
+  return date.toISOString().split('T')[0];
+}
+
+function getStartDate(period: Period): string {
+  const d = new Date();
+  if (period === 'daily') d.setDate(d.getDate() - 29);
+  else if (period === 'yearly') d.setDate(d.getDate() - (YEARLY_DAYS - 1));
+  else if (period === 'weekly') d.setDate(d.getDate() - 83);
+  else d.setFullYear(d.getFullYear() - 1);
+  return toDateStr(d);
+}
+
+// Returns the Monday of the week for a given YYYY-MM-DD string
+function getWeekStart(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00');
+  const day = d.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  d.setDate(d.getDate() + diff);
+  return toDateStr(d);
+}
+
+// Completed work over time. Days are UTC calendar days (YYYY-MM-DD).
+export async function getTimeline(
+  userId: string,
+  period: Period
+): Promise<{ period: Period; data: TimelineEntry[] }> {
+  const startDate = getStartDate(period);
+  const snapshot = await db
+    .collection('dailyStats')
+    .where('userId', '==', userId)
+    .where('date', '>=', startDate)
+    .orderBy('date', 'asc')
+    .get();
+
+  const raw = snapshot.docs.map((doc) => ({
+    date: doc.data().date as string,
+    count: (doc.data().count as number) || 0,
+    minutes: (doc.data().minutes as number) || 0,
+  }));
+
+  if (period === 'daily' || period === 'yearly') {
+    const days = period === 'daily' ? 30 : YEARLY_DAYS;
+    const today = new Date();
+    const result = [];
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i);
+      const dateStr = toDateStr(d);
+      const entry = raw.find((r) => r.date === dateStr);
+      const minutes = entry?.minutes ?? 0;
+      result.push({
+        date: dateStr,
+        label: d.toLocaleDateString('en-US', { weekday: 'short' }),
+        count: minutesToTasks(minutes),
+        minutes,
+      });
+    }
+    return { period, data: result };
+  }
+
+  if (period === 'weekly') {
+    const weekMap = new Map<string, { count: number; minutes: number }>();
+    for (const entry of raw) {
+      const ws = getWeekStart(entry.date);
+      const existing = weekMap.get(ws) ?? { count: 0, minutes: 0 };
+      weekMap.set(ws, {
+        count: existing.count + entry.count,
+        minutes: existing.minutes + entry.minutes,
+      });
+    }
+
+    const today = new Date();
+    const result = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = new Date(today);
+      d.setDate(today.getDate() - i * 7);
+      const ws = getWeekStart(toDateStr(d));
+      const entry = weekMap.get(ws) ?? { count: 0, minutes: 0 };
+      const weekDate = new Date(ws + 'T00:00:00');
+      result.push({
+        date: ws,
+        label: weekDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+        count: minutesToTasks(entry.minutes),
+        minutes: entry.minutes,
+      });
+    }
+    return { period, data: result };
+  }
+
+  // Monthly
+  const monthMap = new Map<string, { count: number; minutes: number }>();
+  for (const entry of raw) {
+    const month = entry.date.slice(0, 7);
+    const existing = monthMap.get(month) ?? { count: 0, minutes: 0 };
+    monthMap.set(month, {
+      count: existing.count + entry.count,
+      minutes: existing.minutes + entry.minutes,
+    });
+  }
+
+  const today = new Date();
+  const result = [];
+  for (let i = 11; i >= 0; i--) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const monthStr = toDateStr(d).slice(0, 7);
+    const entry = monthMap.get(monthStr) ?? { count: 0, minutes: 0 };
+    result.push({
+      date: monthStr,
+      label: d.toLocaleDateString('en-US', { month: 'short', year: '2-digit' }),
+      count: minutesToTasks(entry.minutes),
+      minutes: entry.minutes,
+    });
+  }
+  return { period, data: result };
+}

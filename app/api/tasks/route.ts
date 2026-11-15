@@ -1,109 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/app/api/auth/[...nextauth]/route';
-import { db } from '@/lib/firebase/config';
-import { randomUUID } from 'crypto';
-import { incrementPendingStats } from '@/lib/firebase/stats';
+import { requireUserId, serverError } from '@/lib/auth/session';
+import { createTask, listFeatureTasks } from '@/lib/data/tasks';
+
+const featureNotFound = () => NextResponse.json({ error: 'Feature not found' }, { status: 404 });
 
 // GET /api/tasks - Get tasks for a feature
 // Query params: featureId, includeCompleted
 export async function GET(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const userId = await requireUserId();
+  if (userId instanceof NextResponse) return userId;
 
   try {
     const searchParams = request.nextUrl.searchParams;
     const featureId = searchParams.get('featureId');
     const includeCompleted = searchParams.get('includeCompleted') === 'true';
-
     if (!featureId) {
-      return NextResponse.json(
-        { error: 'featureId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'featureId is required' }, { status: 400 });
     }
-
-    let query: FirebaseFirestore.Query = db
-      .collection('tasks')
-      .where('featureId', '==', featureId);
-
-    if (!includeCompleted) {
-      query = query.where('completedAt', '==', null);
-    }
-
-    const snapshot = await query.get();
-    const tasks = snapshot.docs.map((doc) => doc.data());
-
-    return NextResponse.json(tasks);
+    const tasks = await listFeatureTasks(userId, featureId, includeCompleted);
+    return tasks ? NextResponse.json(tasks) : featureNotFound();
   } catch (error) {
-    console.error('Error fetching tasks:', error);
-    return NextResponse.json(
-      { error: 'Failed to fetch tasks' },
-      { status: 500 }
-    );
+    return serverError('Failed to fetch tasks', error);
   }
 }
 
 // POST /api/tasks - Create a new task
 export async function POST(request: NextRequest) {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  const userId = await requireUserId();
+  if (userId instanceof NextResponse) return userId;
 
   try {
-    const body = await request.json();
-    const { featureId, description, duration: rawDuration } = body;
-    const duration = rawDuration === 30 ? 30 : 15;
-
+    const { featureId, description, duration } = await request.json();
     if (!featureId || typeof featureId !== 'string') {
-      return NextResponse.json(
-        { error: 'featureId is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'featureId is required' }, { status: 400 });
     }
-
     if (!description || typeof description !== 'string') {
-      return NextResponse.json(
-        { error: 'Task description is required' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Task description is required' }, { status: 400 });
     }
-
-    // Fetch feature to get projectId
-    const featureDoc = await db.collection('features').doc(featureId).get();
-    if (!featureDoc.exists) {
-      return NextResponse.json({ error: 'Feature not found' }, { status: 404 });
-    }
-    const projectId = featureDoc.data()?.projectId;
-
-    const taskId = randomUUID();
-    const task = {
-      id: taskId,
-      featureId,
-      description,
-      completedAt: null,
-      createdAt: Date.now(),
-      duration,
-      // Denormalized fields for efficient queries
-      userId: session.user.id,
-      projectId,
-      completedDate: null,
-    };
-
-    await db.collection('tasks').doc(taskId).set(task);
-
-    // Update pending count in stats
-    await incrementPendingStats(session.user.id);
-
-    return NextResponse.json(task, { status: 201 });
+    const task = await createTask(userId, featureId, description, duration === 30 ? 30 : 15);
+    return task ? NextResponse.json(task, { status: 201 }) : featureNotFound();
   } catch (error) {
-    console.error('Error creating task:', error);
-    return NextResponse.json(
-      { error: 'Failed to create task' },
-      { status: 500 }
-    );
+    return serverError('Failed to create task', error);
   }
 }
